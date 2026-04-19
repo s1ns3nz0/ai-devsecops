@@ -1,0 +1,59 @@
+{
+  "project": "Compliance-Driven AI Risk Platform",
+  "phase": "0-mvp0",
+  "steps": [
+    {
+      "step": 0,
+      "name": "project-and-types",
+      "status": "completed",
+      "started_at": "2026-04-19T19:18:00+0900",
+      "summary": "pyproject.toml, Makefile, directory skeleton, core types (RiskTier/ProductManifest/RiskProfile/Finding/RiskReport/GateDecision), config parsers with JSON Schema validation, fixture YAMLs, 18 tests passing"
+    },
+    {
+      "step": 1,
+      "name": "controls-repo",
+      "status": "pending"
+    },
+    {
+      "step": 2,
+      "name": "scanner-integration",
+      "status": "pending"
+    },
+    {
+      "step": 3,
+      "name": "gate-engine",
+      "status": "pending"
+    },
+    {
+      "step": 4,
+      "name": "risk-scoring",
+      "status": "pending"
+    },
+    {
+      "step": 5,
+      "name": "bedrock-assessor",
+      "status": "pending"
+    },
+    {
+      "step": 6,
+      "name": "evidence-export",
+      "status": "pending"
+    },
+    {
+      "step": 7,
+      "name": "sigma-engine",
+      "status": "pending"
+    },
+    {
+      "step": 8,
+      "name": "cli-commands",
+      "status": "pending"
+    },
+    {
+      "step": 9,
+      "name": "demo-integration",
+      "status": "pending"
+    }
+  ],
+  "created_at": "2026-04-19T19:18:00+0900"
+}
