@@ -54,8 +54,10 @@ class ThresholdEvaluator:
 GateDecision에는 다음 정보가 포함된다:
 - `passed`: bool — 전체 gate 통과 여부
 - `reason`: str — 차단 사유 (어떤 threshold가 실패했는지 구체적으로)
-- `threshold_results`: dict — 각 threshold별 {name, limit, actual, passed}
-- `findings_count`: dict — severity별 finding 카운트
+- `threshold_results`: list[dict] — 각 threshold별 `{name, limit, actual, passed}`
+- `findings_count`: dict[str, int] — severity별 finding 카운트 `{"critical": 2, "high": 3}`
+
+참고: `orchestrator/types.py`의 `GateDecision.threshold_results` 타입이 위 구조와 맞지 않으면 수정해도 된다.
 
 차단 사유 형식: `"BLOCKED: {threshold_name} violated — found {actual}, limit {limit} (control: {control_id})"`
 

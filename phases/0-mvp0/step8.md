@@ -26,6 +26,8 @@
 
 ### 8-1. CLI Entry Point
 
+`orchestrator/cli.py` 파일 최상단에 반드시 `from __future__ import annotations`를 추가하라. 이유: click은 `str | None` 같은 union type 어노테이션을 런타임에 파싱할 수 없다. `__future__` import가 어노테이션을 문자열로 만들어 이 문제를 방지한다.
+
 `orchestrator/__main__.py`를 수정하여 click CLI를 구현한다:
 
 ```python

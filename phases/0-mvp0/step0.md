@@ -159,8 +159,8 @@ class GateDecision:
     """Gate 평가 결과"""
     passed: bool
     reason: str                      # 차단 사유 또는 "all checks passed"
-    threshold_results: dict          # 각 threshold별 pass/fail
-    findings_count: dict             # severity별 카운트
+    threshold_results: list[dict[str, object]]  # [{name, limit, actual, passed}, ...]
+    findings_count: dict[str, int]   # severity별 카운트 {"critical": 2, "high": 3, ...}
 ```
 
 ### 0-3. Config Parsers

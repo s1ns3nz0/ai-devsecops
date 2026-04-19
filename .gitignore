@@ -18,4 +18,5 @@ dist/
 # Platform
 output/
 *.jsonl
+!tests/fixtures/**/*.jsonl
 .env
