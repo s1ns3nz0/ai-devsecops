@@ -1,0 +1,18 @@
+title: Brute Force Login Attempt
+id: bf-001
+status: stable
+level: high
+description: Detects multiple failed login attempts from the same IP
+logsource:
+  category: application
+  product: payment-api
+detection:
+  selection:
+    event_type: login_failed
+  condition: selection
+tags:
+  - attack.t1110
+  - attack.brute_force
+control_ids:
+  - PCI-DSS-10.2.1
+  - FISC-SAFETY-15

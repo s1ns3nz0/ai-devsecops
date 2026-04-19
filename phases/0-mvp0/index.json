@@ -61,7 +61,10 @@
     {
       "step": 7,
       "name": "sigma-engine",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-04-20T06:44:15+0900",
+      "summary": "SigmaRule/SigmaMatch models, SigmaEngine (144 LOC, field matching + contains/startswith/endswith modifiers + AND/OR conditions), 4 Sigma rules (brute_force/sqli/exfil/privesc with ATT&CK tags + Control IDs), sample JSONL logs, 10 new tests (114 total passing)",
+      "completed_at": "2026-04-20T07:05:00+0900"
     },
     {
       "step": 8,
