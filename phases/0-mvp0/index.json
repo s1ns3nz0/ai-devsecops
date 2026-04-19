@@ -69,7 +69,10 @@
     {
       "step": 8,
       "name": "cli-commands",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-04-20T06:46:30+0900",
+      "summary": "Click CLI (init/scan/assess/export/detect), get_assessor Strategy selection, structured output formatting, exit code 0/1 for gate pass/fail, 6 new tests (120 total passing)",
+      "completed_at": "2026-04-20T07:15:00+0900"
     },
     {
       "step": 9,
