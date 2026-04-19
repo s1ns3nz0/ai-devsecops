@@ -341,6 +341,16 @@ def detect(log_path: str, product: str, rules_dir: str | None, output_jsonl: str
         click.echo("No matches found.")
 
 
+@cli.command()
+@click.argument("target_path")
+@click.option("--product", default="payment-api")
+def demo(target_path: str, product: str) -> None:
+    """Run the full MVP-0 demo."""
+    from orchestrator.demo import run_demo
+
+    run_demo(target_path, product)
+
+
 def _build_scanners(mapper: ControlMapper) -> list:  # type: ignore[type-arg]
     """Build scanner instances. Imported lazily to avoid hard dep on CLI tools at import time."""
     from orchestrator.scanners.checkov import CheckovScanner

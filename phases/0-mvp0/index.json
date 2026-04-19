@@ -77,7 +77,10 @@
     {
       "step": 9,
       "name": "demo-integration",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-04-20T06:51:36+0900",
+      "summary": "Sample-app fixtures (app.py/config.py/main.tf/requirements.txt/logs), run_demo E2E flow (7 steps: manifest→baseline→scan→gate→assess→detect→export), demo CLI command, Makefile demo/demo-full targets, README.md, 4 new tests (124 total passing)",
+      "completed_at": "2026-04-20T07:15:00+0900"
     }
   ],
   "created_at": "2026-04-19T19:18:00+0900"
