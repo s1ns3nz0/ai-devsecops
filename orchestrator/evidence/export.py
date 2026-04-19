@@ -1,0 +1,136 @@
+"""Evidence report generator — JSONL + Controls Repository -> audit-ready report."""
+
+from __future__ import annotations
+
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+from orchestrator.controls.models import Control
+from orchestrator.controls.repository import ControlsRepository
+from orchestrator.evidence.jsonl import JsonlWriter
+
+
+class EvidenceExporter:
+    """Evidence report generator.
+
+    Generates audit-ready reports from JSONL + Controls Repository.
+
+    - Evidence is a generated artifact, not a DB (ADR-008).
+    - Control ID is the primary key across the entire platform.
+    - MVP-0: JSON format only.
+    """
+
+    def __init__(self, jsonl_reader: JsonlWriter, controls_repo: ControlsRepository) -> None:
+        self._jsonl = jsonl_reader
+        self._controls = controls_repo
+
+    def export(
+        self,
+        product: str,
+        control_id: str | None = None,
+        period: str | None = None,
+        output_path: str = "output/evidence",
+    ) -> dict[str, Any]:
+        """Generate an evidence report."""
+        now = datetime.now(timezone.utc)
+        report_id = f"EVD-{now.strftime('%Y-%m%d')}-001"
+
+        # Determine which controls to include
+        if control_id is not None:
+            controls_map = {
+                cid: ctrl
+                for cid, ctrl in self._controls.controls.items()
+                if cid == control_id
+            }
+        else:
+            controls_map = dict(self._controls.controls)
+
+        # Read all findings for this product
+        all_findings = self._jsonl.read_findings(product=product)
+
+        # Build per-control evidence
+        control_entries: list[dict[str, Any]] = []
+        fully_evidenced = 0
+        partially_evidenced = 0
+        no_evidence = 0
+
+        for cid, ctrl in controls_map.items():
+            ctrl_findings = [
+                f for f in all_findings if cid in f.get("data", {}).get("control_ids", [])
+            ]
+            status = self._determine_control_status(ctrl, ctrl_findings)
+
+            scanners_used = sorted({f["data"]["source"] for f in ctrl_findings})
+            last_scan = (
+                max(f["timestamp"] for f in ctrl_findings) if ctrl_findings else None
+            )
+
+            entry: dict[str, Any] = {
+                "control_id": cid,
+                "title": ctrl.title,
+                "framework": ctrl.framework,
+                "status": status,
+                "evidence": {
+                    "findings": [f["data"] for f in ctrl_findings],
+                    "scanners_used": scanners_used,
+                    "last_scan": last_scan,
+                    "risk_assessments": [],
+                },
+            }
+            control_entries.append(entry)
+
+            if status == "full":
+                fully_evidenced += 1
+            elif status == "partial":
+                partially_evidenced += 1
+            else:
+                no_evidence += 1
+
+        total = len(controls_map)
+        coverage = round((fully_evidenced + partially_evidenced) / total * 100, 1) if total > 0 else 0.0
+
+        report: dict[str, Any] = {
+            "report_id": report_id,
+            "generated_at": now.isoformat(),
+            "product": product,
+            "period": period,
+            "controls": control_entries,
+            "summary": {
+                "total_controls": total,
+                "fully_evidenced": fully_evidenced,
+                "partially_evidenced": partially_evidenced,
+                "no_evidence": no_evidence,
+                "coverage_percentage": coverage,
+            },
+        }
+
+        # Write JSON file
+        out_dir = Path(output_path)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_file = out_dir / f"{report_id}.json"
+        with open(out_file, "w") as f:
+            json.dump(report, f, indent=2, ensure_ascii=False)
+
+        return report
+
+    def _determine_control_status(self, control: Control, findings: list[dict[str, Any]]) -> str:
+        """Determine evidence status for a control.
+
+        - "full": all verification_methods have recent scan results
+        - "partial": some verification_methods have scan results
+        - "none": no scan results
+        """
+        if not findings:
+            return "none"
+
+        required_scanners = {vm.scanner for vm in control.verification_methods}
+        found_scanners = {f["data"]["source"] for f in findings}
+        covered = required_scanners & found_scanners
+
+        if not covered:
+            return "none"
+        if covered == required_scanners:
+            return "full"
+        return "partial"
