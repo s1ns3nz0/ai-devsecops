@@ -72,5 +72,5 @@ class GateDecision:
 
     passed: bool
     reason: str
-    threshold_results: dict[str, bool]
+    threshold_results: list[dict[str, object]]
     findings_count: dict[str, int]

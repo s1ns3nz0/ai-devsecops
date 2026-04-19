@@ -98,7 +98,7 @@ class TestGateDecision:
         gate = GateDecision(
             passed=False,
             reason="critical findings exceed threshold",
-            threshold_results={"max_critical_findings": False},
+            threshold_results=[{"name": "max_critical_findings", "limit": 0, "actual": 1, "passed": False}],
             findings_count={"critical": 1, "high": 2, "medium": 0, "low": 0},
         )
         assert not gate.passed
@@ -108,7 +108,7 @@ class TestGateDecision:
         gate = GateDecision(
             passed=True,
             reason="all checks passed",
-            threshold_results={"max_critical_findings": True},
+            threshold_results=[{"name": "max_critical_findings", "limit": 0, "actual": 0, "passed": True}],
             findings_count={"critical": 0, "high": 0, "medium": 1, "low": 3},
         )
         assert gate.passed
