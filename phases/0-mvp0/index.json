@@ -7,7 +7,8 @@
       "name": "project-and-types",
       "status": "completed",
       "started_at": "2026-04-19T19:18:00+0900",
-      "summary": "pyproject.toml, Makefile, directory skeleton, core types (RiskTier/ProductManifest/RiskProfile/Finding/RiskReport/GateDecision), config parsers with JSON Schema validation, fixture YAMLs, 18 tests passing"
+      "summary": "pyproject.toml, Makefile, directory skeleton, core types (RiskTier/ProductManifest/RiskProfile/Finding/RiskReport/GateDecision), config parsers with JSON Schema validation, fixture YAMLs, 18 tests passing",
+      "completed_at": "2026-04-19T19:21:23+0900"
     },
     {
       "step": 1,
