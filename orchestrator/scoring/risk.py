@@ -76,7 +76,7 @@ def compute_risk_score(
 
     # Control coverage
     required_control_ids = {c.id for c in controls}
-    covered_control_ids = set()
+    covered_control_ids: set[str] = set()
     for f in findings:
         covered_control_ids.update(cid for cid in f.control_ids if cid in required_control_ids)
     control_coverage = (

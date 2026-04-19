@@ -37,10 +37,10 @@
     {
       "step": 4,
       "name": "risk-scoring",
-      "status": "error",
-      "started_at": "2026-04-19T19:32:43+0900",
-      "error_message": "[3회 시도 후 실패] Step did not update status",
-      "failed_at": "2026-04-19T19:36:08+0900"
+      "status": "completed",
+      "started_at": "2026-04-20T06:35:31+0900",
+      "summary": "RiskAssessor Protocol, compute_risk_score (SP 800-30 Likelihood×Impact), StaticRiskAssessor (deterministic categorize+assess), RA-YYYY-MMDD-NNN report IDs, mypy type fixes, 13 new tests (80 total passing)",
+      "completed_at": "2026-04-20T07:00:00+0900"
     },
     {
       "step": 5,

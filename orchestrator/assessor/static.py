@@ -69,7 +69,9 @@ class StaticRiskAssessor:
         """Static assessment: compute_risk_score + 템플릿 narrative."""
         score, factors = compute_risk_score(findings, manifest, controls)
 
-        severity_dist = factors["finding_severity_distribution"]
+        severity_dist: dict[str, int] = factors["finding_severity_distribution"]  # type: ignore[assignment]
+        likelihood_score = float(factors["likelihood_score"])  # type: ignore[arg-type]
+        impact_score = float(factors["impact_score"])  # type: ignore[arg-type]
         affected_controls = sorted(
             {cid for f in findings for cid in f.control_ids}
         )
@@ -88,8 +90,8 @@ class StaticRiskAssessor:
             trigger=trigger,
             product=manifest.name,
             risk_tier=self.categorize(manifest),
-            likelihood=_score_to_label(factors["likelihood_score"]),
-            impact=_score_to_label(factors["impact_score"]),
+            likelihood=_score_to_label(likelihood_score),
+            impact=_score_to_label(impact_score),
             risk_score=score,
             narrative=narrative,
             findings_summary=severity_dist,
