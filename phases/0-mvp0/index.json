@@ -48,7 +48,7 @@
       "status": "completed",
       "started_at": "2026-04-20T06:36:50+0900",
       "summary": "BedrockRiskAssessor (Strategy pattern, Bedrock InvokeModel API), BedrockClient wrapper, prompt templates (categorization+assessment), StaticRiskAssessor fallback on failure/invalid JSON, deterministic score preserved (AI cannot override), 9 new unit tests + 3 prompt tests + 2 contract tests (91 unit + 2 contract total passing)",
-      "completed_at": "2026-04-20T07:15:00+0900"
+      "completed_at": "2026-04-20T06:41:08+0900"
     },
     {
       "step": 6,
