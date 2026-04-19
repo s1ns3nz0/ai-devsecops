@@ -1,0 +1,53 @@
+controls:
+  - control:
+      id: "FISC-SAFETY-15"
+      title: "Monitoring and detection of unauthorized activities"
+      framework: "fisc-safety"
+      description: "Establish monitoring systems to detect unauthorized access, anomalies, and security incidents in real-time."
+      verification_methods:
+        - scanner: sigma
+      applicable_tiers:
+        - critical
+      risk_tier_mapping:
+        low: not-required
+        medium: not-required
+        high: not-required
+        critical: required
+
+  - control:
+      id: "FISC-DATA-03"
+      title: "Data protection at rest"
+      framework: "fisc-safety"
+      description: "Ensure data at rest is encrypted using approved cryptographic algorithms and managed key storage."
+      verification_methods:
+        - scanner: checkov
+          check_ids:
+            - "CKV_AWS_19"
+            - "CKV_AWS_21"
+      applicable_tiers:
+        - critical
+      risk_tier_mapping:
+        low: not-required
+        medium: not-required
+        high: not-required
+        critical: required
+
+  - control:
+      id: "FISC-ACCESS-07"
+      title: "Access control enforcement"
+      framework: "fisc-safety"
+      description: "Enforce access control policies to ensure only authorized users can access systems and data."
+      verification_methods:
+        - scanner: semgrep
+          rules:
+            - "python.lang.security.audit.hardcoded-password.*"
+        - scanner: checkov
+          check_ids:
+            - "CKV_AWS_1"
+      applicable_tiers:
+        - critical
+      risk_tier_mapping:
+        low: not-required
+        medium: not-required
+        high: not-required
+        critical: required
