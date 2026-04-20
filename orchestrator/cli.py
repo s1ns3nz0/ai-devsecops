@@ -342,6 +342,69 @@ def detect(log_path: str, product: str, rules_dir: str | None, output_jsonl: str
         click.echo("No matches found.")
 
 
+@cli.command("sbom")
+@click.argument("target")
+@click.option("--output-dir", default="output", help="Directory to store SBOM file")
+def sbom_cmd(target: str, output_dir: str) -> None:
+    """Generate CycloneDX SBOM from a directory or container image."""
+    from orchestrator.scanners.sbom import SbomGenerationError, SbomGenerator
+
+    generator = SbomGenerator()
+    try:
+        result = generator.generate(target, output_dir)
+        click.echo(f"SBOM generated: {result.sbom_path}")
+        click.echo(f"Components: {result.components_count}")
+        click.echo(f"Format: {result.format}")
+    except SbomGenerationError as e:
+        click.echo(f"SBOM generation failed: {e}", err=True)
+        sys.exit(1)
+
+
+@cli.command("container-scan")
+@click.argument("image_ref")
+@click.option("--product", required=True, help="Product name")
+@click.option("--controls-dir", default=None)
+@click.option("--tier-mappings", default=None)
+@click.option("--output-jsonl", default=None)
+def container_scan(
+    image_ref: str,
+    product: str,
+    controls_dir: str | None,
+    tier_mappings: str | None,
+    output_jsonl: str | None,
+) -> None:
+    """Scan a container image for vulnerabilities using Grype."""
+    baselines = controls_dir or _default_path("controls/baselines")
+    mappings = tier_mappings or _default_path("controls/tier-mappings.yaml")
+    jsonl_path = output_jsonl or _default_path("output/findings.jsonl")
+
+    repo = ControlsRepository(baselines_dir=baselines, tier_mappings_path=mappings)
+    repo.load_all()
+
+    mapper = ControlMapper(repo)
+
+    from orchestrator.scanners.grype import GrypeScanner
+
+    grype = GrypeScanner(mapper)
+    findings = grype.scan_image(image_ref)
+
+    for f in findings:
+        f.product = product
+
+    writer = JsonlWriter(jsonl_path)
+    writer.write_findings(findings)
+
+    severity_counts: dict[str, int] = {}
+    for f in findings:
+        severity_counts[f.severity] = severity_counts.get(f.severity, 0) + 1
+
+    click.echo(f"[container-scan] Image: {image_ref}")
+    click.echo(f"[container-scan] {len(findings)} vulnerabilities found")
+    for sev, count in sorted(severity_counts.items()):
+        click.echo(f"  {sev}: {count}")
+    click.echo(f"[container-scan] Findings logged to {jsonl_path}")
+
+
 @cli.command()
 @click.argument("target_path")
 @click.option("--product", default="payment-api")

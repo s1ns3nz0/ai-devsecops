@@ -1,4 +1,4 @@
-"""Grype scanner wrapper — SCA integration."""
+"""Grype scanner wrapper — SCA and container image scanning."""
 
 from __future__ import annotations
 
@@ -13,7 +13,13 @@ logger = logging.getLogger(__name__)
 
 
 class GrypeScanner:
-    """Grype SCA scanner wrapper."""
+    """Grype SCA scanner wrapper.
+
+    Supports three scan modes:
+    - Directory scan: grype {dir} (scans lockfiles directly)
+    - SBOM scan: grype sbom:{path} (scans a pre-generated CycloneDX SBOM)
+    - Container scan: grype {image} (scans a Docker container image)
+    """
 
     def __init__(self, control_mapper: ControlMapper) -> None:
         self._control_mapper = control_mapper
@@ -23,13 +29,35 @@ class GrypeScanner:
         return "grype"
 
     def scan(self, target_path: str) -> list[Finding]:
-        """Run grype CLI and parse output."""
+        """Run grype CLI against a directory path."""
         result = subprocess.run(
             ["grype", target_path, "-o", "json"],
             capture_output=True,
             text=True,
         )
         return self.parse_output(result.stdout)
+
+    def scan_sbom(self, sbom_path: str) -> list[Finding]:
+        """Run grype against a CycloneDX SBOM file."""
+        result = subprocess.run(
+            ["grype", f"sbom:{sbom_path}", "-o", "json"],
+            capture_output=True,
+            text=True,
+        )
+        return self.parse_output(result.stdout)
+
+    def scan_image(self, image_ref: str) -> list[Finding]:
+        """Run grype against a container image (e.g., 'nginx:latest')."""
+        result = subprocess.run(
+            ["grype", image_ref, "-o", "json"],
+            capture_output=True,
+            text=True,
+        )
+        findings = self.parse_output(result.stdout)
+        # Tag container findings with source context
+        for f in findings:
+            f.message = f"[container:{image_ref}] {f.message}"
+        return findings
 
     def parse_output(self, raw_output: str) -> list[Finding]:
         """Parse Grype JSON output into Finding objects."""
