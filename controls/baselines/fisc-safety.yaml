@@ -48,6 +48,11 @@ controls:
         - scanner: checkov
           check_ids:
             - "CKV_AWS_1"
+            - "CKV_AWS_40"
+            - "CKV_AWS_41"
+            - "CKV_AWS_61"
+            - "CKV_AWS_46"
+            - "CKV_AWS_79"
       applicable_tiers:
         - critical
       risk_tier_mapping:

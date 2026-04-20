@@ -91,11 +91,43 @@ class EvidenceExporter:
         total = len(controls_map)
         coverage = round((fully_evidenced + partially_evidenced) / total * 100, 1) if total > 0 else 0.0
 
+        # Build executive summary: findings-by-control
+        total_mapped_findings = sum(len(e["evidence"]["findings"]) for e in control_entries)
+        total_all_findings = len(all_findings)
+        unmapped_count = total_all_findings - total_mapped_findings
+
+        controls_summary: list[dict[str, Any]] = []
+        for entry in control_entries:
+            n_findings = len(entry["evidence"]["findings"])
+            severity_dist: dict[str, int] = {}
+            for f in entry["evidence"]["findings"]:
+                sev = f.get("severity", "unknown")
+                severity_dist[sev] = severity_dist.get(sev, 0) + 1
+            controls_summary.append({
+                "control_id": entry["control_id"],
+                "title": entry["title"],
+                "status": entry["status"],
+                "findings_count": n_findings,
+                "severity_distribution": severity_dist,
+                "scanners": entry["evidence"]["scanners_used"],
+            })
+
         report: dict[str, Any] = {
             "report_id": report_id,
             "generated_at": now.isoformat(),
             "product": product,
             "period": period,
+            "executive_summary": {
+                "total_controls": total,
+                "fully_evidenced": fully_evidenced,
+                "partially_evidenced": partially_evidenced,
+                "no_evidence": no_evidence,
+                "coverage_percentage": coverage,
+                "total_findings": total_all_findings,
+                "mapped_to_controls": total_mapped_findings,
+                "unmapped_findings": unmapped_count,
+                "controls": controls_summary,
+            },
             "controls": control_entries,
             "summary": {
                 "total_controls": total,

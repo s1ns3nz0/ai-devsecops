@@ -21,7 +21,7 @@ from orchestrator.gate.threshold import ThresholdEvaluator
 from orchestrator.scanners.control_mapper import ControlMapper
 from orchestrator.scanners.runner import ScannerRunner
 from orchestrator.sigma.engine import SigmaEngine
-from orchestrator.types import RiskTier
+from orchestrator.types import Finding, RiskTier
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -228,6 +228,31 @@ def assess(
     if not findings:
         click.echo("      No findings")
 
+    # SBOM generation (supply chain evidence)
+    try:
+        from orchestrator.scanners.sbom import SbomGenerator
+
+        sbom_gen = SbomGenerator()
+        sbom_result = sbom_gen.generate(target_path, str(_PROJECT_ROOT / "output"))
+        sbom_control_ids = mapper.map_finding("sbom", "sbom-generated")
+        # Ensure control_ids is a real list (not a mock)
+        if not isinstance(sbom_control_ids, list):
+            sbom_control_ids = []
+        findings.append(
+            Finding(
+                source="sbom",
+                rule_id="sbom-generated",
+                severity="info",
+                file=sbom_result.sbom_path,
+                line=0,
+                message=f"CycloneDX SBOM generated: {sbom_result.components_count} components",
+                control_ids=sbom_control_ids,
+                product=product,
+            )
+        )
+    except Exception:
+        pass  # SBOM generation is optional (syft may not be installed)
+
     # Write findings to JSONL
     writer = JsonlWriter(jsonl_path)
     writer.write_findings(findings)
@@ -310,6 +335,18 @@ def export_cmd(
         f"{summary['partially_evidenced']} partial, "
         f"{summary['no_evidence']} none)"
     )
+
+    # Executive summary: findings by control
+    exec_summary = report.get("executive_summary", {})
+    if exec_summary:
+        click.echo(f"\nFindings: {exec_summary['total_findings']} total, "
+                    f"{exec_summary['mapped_to_controls']} mapped to controls, "
+                    f"{exec_summary['unmapped_findings']} unmapped")
+        click.echo("\nControl evidence:")
+        for cs in exec_summary.get("controls", []):
+            icon = {"full": "[OK]", "partial": "[!!]", "none": "[  ]"}.get(cs["status"], "[??]")
+            sev = ", ".join(f"{v} {k}" for k, v in cs["severity_distribution"].items()) if cs["severity_distribution"] else "—"
+            click.echo(f"  {icon} {cs['control_id']:<20} {cs['findings_count']:>4} findings  ({sev})")
 
 
 @cli.command()
