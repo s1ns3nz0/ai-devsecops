@@ -171,8 +171,12 @@ class EvidenceExporter:
         found_scanners = {f["data"]["source"] for f in findings}
         covered = required_scanners & found_scanners
 
+        # Findings from non-required scanners (e.g., Sigma rules with control_ids)
+        # count as supplementary evidence — upgrade "none" to "partial"
+        has_supplementary = bool(found_scanners - required_scanners) and bool(findings)
+
         if not covered:
-            return "none"
+            return "partial" if has_supplementary else "none"
         if covered == required_scanners:
             return "full"
         return "partial"

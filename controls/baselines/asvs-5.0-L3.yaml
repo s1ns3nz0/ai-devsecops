@@ -50,6 +50,7 @@ controls:
         - scanner: semgrep
           rules:
             - "python.lang.security.injection.*"
+            - "python.lang.security.audit.*sql*"
             - "python.django.security.injection.*"
       applicable_tiers:
         - medium

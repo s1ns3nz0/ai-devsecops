@@ -27,7 +27,7 @@ class GitleaksScanner:
     def scan(self, target_path: str) -> list[Finding]:
         """Run gitleaks CLI and parse output."""
         result = subprocess.run(
-            ["gitleaks", "detect", "--source", target_path, "--report-format", "json", "--report-path", "-"],
+            ["gitleaks", "detect", "--source", target_path, "--no-git", "--report-format", "json", "--report-path", "-"],
             capture_output=True,
             text=True,
             timeout=_SUBPROCESS_TIMEOUT,
