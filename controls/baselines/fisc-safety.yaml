@@ -1,3 +1,7 @@
+# Note: FISC (Financial Industry Information Systems Center) Safety Standards
+# are published in Japanese with a different numbering scheme. These control IDs
+# are representative mappings for demonstration purposes, not actual FISC clause numbers.
+# See docs/architecture-design.md for the full compliance framework strategy.
 controls:
   - control:
       id: "FISC-SAFETY-15"

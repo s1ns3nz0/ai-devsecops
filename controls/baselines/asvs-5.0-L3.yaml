@@ -1,3 +1,6 @@
+# Note: OWASP ASVS 5.0 is not yet released at time of writing. Control IDs
+# are based on ASVS 4.0.3 (the current stable release) and may change in 5.0.
+# The "5.0-L3" label reflects the target baseline level for this platform.
 controls:
   - control:
       id: "ASVS-V2.10.1"

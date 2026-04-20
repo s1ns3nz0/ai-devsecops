@@ -2,7 +2,7 @@ title: Brute Force Login Attempt
 id: bf-001
 status: stable
 level: high
-description: Detects multiple failed login attempts from the same IP
+description: Detects failed login attempt (aggregation-based brute force detection requires count operator, out of MVP-0 scope)
 logsource:
   category: application
   product: payment-api
