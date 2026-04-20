@@ -67,17 +67,18 @@ compliance-ai-risk-platform/
 ├── CLAUDE.md
 ├── AGENTS.md
 ├── Makefile
-├── docker-compose.yml
 ├── .env.example
+├── .github/workflows/ci.yml
 ├── docs/
 │   ├── PRD.md
 │   ├── ARCHITECTURE.md
-│   └── ADR.md
+│   ├── ADR.md
+│   └── architecture-design.md        # Full design document
 ├── controls/                          ← OSCAL YAML (핵심 폴더)
 │   ├── baselines/
-│   │   ├── pci-dss-4.0.yaml          # ~15 controls (Sec 1, 3, 6, 10)
-│   │   ├── asvs-5.0-L3.yaml          # ~10 controls (V2, V3, V10, V14)
-│   │   └── fisc-safety.yaml          # ~5 controls
+│   │   ├── pci-dss-4.0.yaml          # 5 controls (Sec 1, 3, 6, 10)
+│   │   ├── asvs-5.0-L3.yaml          # 4 controls (V2, V3, V5, V14)
+│   │   └── fisc-safety.yaml          # 3 controls
 │   ├── products/
 │   │   └── payment-api/
 │   │       ├── product-manifest.yaml
@@ -90,26 +91,34 @@ compliance-ai-risk-platform/
 │   ├── assessor/
 │   │   ├── interface.py               # RiskAssessor protocol
 │   │   ├── static.py                  # StaticRiskAssessor
-│   │   └── bedrock.py                 # BedrockRiskAssessor
+│   │   ├── bedrock.py                 # BedrockRiskAssessor
+│   │   ├── bedrock_client.py          # boto3 wrapper
+│   │   └── prompts.py                 # Prompt templates
 │   ├── scanners/
+│   │   ├── base.py                    # Scanner protocol
 │   │   ├── checkov.py
 │   │   ├── semgrep.py
 │   │   ├── grype.py
-│   │   └── gitleaks.py
+│   │   ├── gitleaks.py
+│   │   ├── control_mapper.py          # Rule → Control ID mapping
+│   │   └── runner.py                  # ScannerRunner (log-and-continue)
 │   ├── gate/
-│   │   ├── threshold.py               # YAML threshold evaluator
-│   │   └── opa.py                     # OPA integration (MVP tier)
+│   │   └── threshold.py               # YAML threshold evaluator
 │   ├── controls/
+│   │   ├── models.py                  # Control, VerificationMethod
 │   │   ├── repository.py              # Controls YAML loader
 │   │   └── baseline.py                # Tier → baseline selection
 │   ├── evidence/
 │   │   ├── jsonl.py                   # JSONL writer
 │   │   └── export.py                  # Evidence report generator
 │   ├── sigma/
-│   │   └── engine.py                  # Python Sigma matcher (~150 LOC)
+│   │   ├── models.py                  # SigmaRule, SigmaMatch
+│   │   └── engine.py                  # Python Sigma matcher (144 LOC)
 │   ├── config/
 │   │   ├── manifest.py                # Product manifest parser
-│   │   └── profile.py                 # Risk profile parser
+│   │   ├── profile.py                 # Risk profile parser
+│   │   └── schemas/                   # JSON Schema files
+│   ├── demo.py                        # E2E demo runner
 │   └── scoring/
 │       └── risk.py                    # Likelihood × Impact calculation
 ├── sigma/
