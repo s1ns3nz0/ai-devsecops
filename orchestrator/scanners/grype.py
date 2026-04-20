@@ -12,6 +12,30 @@ from orchestrator.types import Finding
 logger = logging.getLogger(__name__)
 
 _SUBPROCESS_TIMEOUT = 300  # 5 minutes
+_DB_STALE_DAYS = 7
+
+
+def check_grype_db_freshness() -> dict[str, object]:
+    """Check Grype vulnerability DB status.
+
+    Returns dict with 'status', 'built' (timestamp), and 'stale' (bool).
+    """
+    try:
+        result = subprocess.run(
+            ["grype", "db", "check"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        output = result.stdout + result.stderr
+        stale = "update available" in output.lower() or result.returncode != 0
+        return {
+            "status": "stale" if stale else "current",
+            "stale": stale,
+            "output": output.strip()[:200],
+        }
+    except Exception as e:
+        return {"status": "unknown", "stale": True, "output": str(e)[:200]}
 
 
 class GrypeScanner:

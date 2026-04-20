@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 from orchestrator.controls.models import Control
 from orchestrator.types import Finding, ProductManifest
 
@@ -37,7 +39,7 @@ def compute_risk_score(
         (risk_score 0-10, factors dict with evidence per factor)
     """
     # --- Likelihood factors ---
-    severity_dist: dict[str, int] = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+    severity_dist: dict[str, int] = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
     for f in findings:
         key = f.severity.lower()
         if key in severity_dist:
@@ -47,13 +49,16 @@ def compute_risk_score(
 
     # Weighted severity score (0-10)
     if total_findings > 0:
-        weighted = sum(severity_dist[s] * _SEVERITY_WEIGHT[s] for s in severity_dist)
+        weighted = sum(severity_dist.get(s, 0) * _SEVERITY_WEIGHT.get(s, 0) for s in severity_dist)
         severity_score = min(weighted / total_findings, 10.0)
-        # Scale up with volume — reaches 1.0x at 2 findings, caps at 1.5x
-        volume_factor = min(total_findings / 2.0, 1.5)
+        # Logarithmic volume factor — differentiates 10 vs 100 vs 1000 findings
+        # log10(10)=1.0, log10(100)=2.0, log10(1000)=3.0
+        # Factor range: 1.0 (1 finding) to 2.0 (1000+ findings)
+        volume_factor = min(1.0 + math.log10(max(total_findings, 1)) * 0.3, 2.0)
         severity_score = min(severity_score * volume_factor, 10.0)
     else:
         severity_score = 0.0
+        volume_factor = 1.0
 
     # PCI scope ratio
     pci_findings = sum(
@@ -61,9 +66,10 @@ def compute_risk_score(
     )
     pci_scope_ratio = pci_findings / total_findings if total_findings > 0 else 0.0
 
-    # Secrets detected
-    secrets_detected = any(f.source == "gitleaks" for f in findings)
-    secrets_bonus = 3.0 if secrets_detected else 0.0
+    # Secrets detected — scales with count, caps at 4.0
+    secrets_count = sum(1 for f in findings if f.source == "gitleaks")
+    secrets_detected = secrets_count > 0
+    secrets_bonus = min(secrets_count * 0.5, 4.0) if secrets_detected else 0.0
 
     likelihood_score = min(severity_score + secrets_bonus + pci_scope_ratio, 10.0)
 
@@ -97,17 +103,20 @@ def compute_risk_score(
     )
 
     # --- Combined score ---
-    risk_score = min(likelihood_score * 0.5 + impact_score * 0.5, 10.0)
+    risk_score = round(min(likelihood_score * 0.5 + impact_score * 0.5, 10.0), 1)
 
-    factors = {
+    factors: dict[str, object] = {
         "finding_severity_distribution": severity_dist,
-        "pci_scope_ratio": pci_scope_ratio,
+        "total_findings": total_findings,
+        "volume_factor": round(volume_factor, 2),
+        "pci_scope_ratio": round(pci_scope_ratio, 2),
         "secrets_detected": secrets_detected,
+        "secrets_count": secrets_count,
         "data_classification": sorted(classifications),
-        "control_coverage": control_coverage,
+        "control_coverage": round(control_coverage, 2),
         "jurisdiction_sensitivity": jurisdiction_score,
-        "likelihood_score": likelihood_score,
-        "impact_score": impact_score,
+        "likelihood_score": round(likelihood_score, 2),
+        "impact_score": round(impact_score, 2),
     }
 
     return risk_score, factors

@@ -112,11 +112,21 @@ class EvidenceExporter:
                 "scanners": entry["evidence"]["scanners_used"],
             })
 
+        # Scanner health metadata
+        scanner_health: dict[str, object] = {}
+        try:
+            from orchestrator.scanners.grype import check_grype_db_freshness
+
+            scanner_health["grype_db"] = check_grype_db_freshness()
+        except Exception:
+            scanner_health["grype_db"] = {"status": "unavailable"}
+
         report: dict[str, Any] = {
             "report_id": report_id,
             "generated_at": now.isoformat(),
             "product": product,
             "period": period,
+            "scanner_health": scanner_health,
             "executive_summary": {
                 "total_controls": total,
                 "fully_evidenced": fully_evidenced,
