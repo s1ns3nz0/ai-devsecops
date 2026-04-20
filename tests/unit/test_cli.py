@@ -282,7 +282,7 @@ class TestDetectCommand:
                 "condition": "selection",
             },
             "tags": ["attack.initial_access"],
-            "control_ids": ["ASVS-V2.1.1"],
+            "control_ids": ["ASVS-V2.10.1"],
         }
         import yaml
         (rules_dir / "test_rule.yml").write_text(yaml.dump(rule))

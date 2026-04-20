@@ -9,6 +9,7 @@ from pathlib import Path
 import click
 import yaml
 
+from orchestrator.assessor.interface import RiskAssessor
 from orchestrator.assessor.static import StaticRiskAssessor
 from orchestrator.config.manifest import load_manifest
 from orchestrator.config.profile import load_profile
@@ -29,7 +30,7 @@ def _default_path(relative: str) -> str:
     return str(_PROJECT_ROOT / relative)
 
 
-def get_assessor(controls_repo: ControlsRepository) -> StaticRiskAssessor:
+def get_assessor(controls_repo: ControlsRepository) -> RiskAssessor:
     """Return an appropriate RiskAssessor based on environment.
 
     - BEDROCK_MODEL_ID set + boto3 importable → BedrockRiskAssessor
@@ -43,7 +44,7 @@ def get_assessor(controls_repo: ControlsRepository) -> StaticRiskAssessor:
             from orchestrator.assessor.bedrock_client import BedrockClient
 
             client = BedrockClient(model_id=model_id, region=region)
-            return BedrockRiskAssessor(client=client)  # type: ignore[return-value]
+            return BedrockRiskAssessor(client=client)
         except Exception:
             pass
     return StaticRiskAssessor()
