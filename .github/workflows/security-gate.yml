@@ -1,0 +1,143 @@
+name: Security Gate
+
+on:
+  pull_request:
+    branches: [main]
+  # Allow manual trigger for demo purposes
+  workflow_dispatch:
+    inputs:
+      product:
+        description: "Product name to assess"
+        default: "payment-api"
+        type: string
+
+jobs:
+  security-gate:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write  # Post gate results as PR comment
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install platform
+        run: pip install -e ".[dev]"
+
+      - name: Install scanners
+        run: |
+          pip install checkov semgrep
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+          curl -sSfL https://raw.githubusercontent.com/gitleaks/gitleaks/main/scripts/install.sh | sh -s -- -b /usr/local/bin
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Run security assessment
+        id: assess
+        continue-on-error: true
+        run: |
+          PRODUCT="${{ inputs.product || 'payment-api' }}"
+          echo "product=${PRODUCT}" >> "$GITHUB_OUTPUT"
+
+          python -m orchestrator assess tests/fixtures/sample-app \
+            --product "${PRODUCT}" \
+            --trigger pre_merge \
+            2>&1 | tee assessment-output.txt
+
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Generate SBOM
+        continue-on-error: true
+        run: |
+          python -m orchestrator sbom tests/fixtures/sample-app --output-dir output
+          echo "SBOM generated" >> assessment-output.txt
+
+      - name: Run Sigma detection
+        continue-on-error: true
+        run: |
+          if [ -f tests/fixtures/sample-app/logs/access.jsonl ]; then
+            python -m orchestrator detect tests/fixtures/sample-app/logs/access.jsonl \
+              --product "${{ inputs.product || 'payment-api' }}" \
+              2>&1 | tee -a assessment-output.txt
+          fi
+
+      - name: Export evidence report
+        continue-on-error: true
+        run: |
+          python -m orchestrator export \
+            --product "${{ inputs.product || 'payment-api' }}" \
+            --output output/evidence \
+            2>&1 | tee -a assessment-output.txt
+
+      - name: Post gate results to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const output = fs.readFileSync('assessment-output.txt', 'utf8');
+            const exitCode = '${{ steps.assess.outcome }}';
+            const icon = exitCode === 'success' ? '✅' : '🚫';
+            const status = exitCode === 'success' ? 'PASSED' : 'BLOCKED';
+
+            let evidenceReport = '';
+            try {
+              const files = fs.readdirSync('output/evidence');
+              const jsonFile = files.find(f => f.endsWith('.json'));
+              if (jsonFile) {
+                const report = JSON.parse(fs.readFileSync(`output/evidence/${jsonFile}`, 'utf8'));
+                const exec = report.executive_summary || {};
+                const controls = exec.controls || [];
+                evidenceReport = '\n### Evidence by Control\n\n';
+                evidenceReport += '| Control | Status | Findings | Scanners |\n';
+                evidenceReport += '|---------|--------|----------|----------|\n';
+                for (const c of controls) {
+                  const statusIcon = {full: '🟢', partial: '🟡', none: '🔴'}[c.status] || '⚪';
+                  evidenceReport += `| ${statusIcon} ${c.control_id} | ${c.status} | ${c.findings_count} | ${c.scanners.join(', ') || '—'} |\n`;
+                }
+                evidenceReport += `\n**Coverage: ${report.summary.coverage_percentage}%** (${report.summary.fully_evidenced} full, ${report.summary.partially_evidenced} partial, ${report.summary.no_evidence} none)\n`;
+              }
+            } catch (e) { /* no report available */ }
+
+            const body = `## ${icon} Security Gate: ${status}
+
+            <details>
+            <summary>Assessment Output</summary>
+
+            \`\`\`
+            ${output}
+            \`\`\`
+
+            </details>
+            ${evidenceReport}
+
+            ---
+            *Compliance-Driven AI Risk Platform — gate decision is deterministic (YAML thresholds), AI is advisory only*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body,
+            });
+
+      - name: Upload evidence artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-evidence
+          path: |
+            output/findings.jsonl
+            output/evidence/
+            output/sbom-*.cdx.json
+            assessment-output.txt
+          retention-days: 90
+
+      - name: Enforce gate decision
+        if: steps.assess.outcome == 'failure'
+        run: |
+          echo "::error::Security gate BLOCKED — critical findings exceed threshold"
+          exit 1

@@ -1,6 +1,7 @@
 # Compliance-Driven AI Risk Platform
 
 [![CI](https://github.com/s1ns3nz0/ai-devsecops/actions/workflows/ci.yml/badge.svg)](https://github.com/s1ns3nz0/ai-devsecops/actions/workflows/ci.yml)
+[![Security Gate](https://github.com/s1ns3nz0/ai-devsecops/actions/workflows/security-gate.yml/badge.svg)](https://github.com/s1ns3nz0/ai-devsecops/actions/workflows/security-gate.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -202,6 +203,31 @@ Query: *"Show evidence for ASVS-V2.10.1 (No hardcoded credentials)"*
 ```
 
 One Control ID traces from framework requirement to scanner finding to evidence artifact.
+
+## CI/CD Security Gate
+
+Every PR triggers an automated security assessment:
+
+1. All scanners run against the codebase (Checkov, Semgrep, Grype, Gitleaks)
+2. SBOM generated (Syft → CycloneDX)
+3. Sigma detection rules run against logs
+4. Gate evaluates findings against risk thresholds
+5. Evidence report posted as PR comment with control-by-control status
+6. PR blocked if gate fails — evidence artifacts uploaded for audit
+
+The gate decision is posted directly on the PR:
+
+```
+🚫 Security Gate: BLOCKED
+
+| Control         | Status  | Findings | Scanners       |
+|-----------------|---------|----------|----------------|
+| 🟢 PCI-DSS-3.4 | full    |       19 | checkov        |
+| 🟢 PCI-DSS-6.3.1| full   |       67 | grype, semgrep |
+| 🔴 ASVS-V3.5.1 | none    |        0 | —              |
+
+Coverage: 69.2%
+```
 
 ## Testing
 
