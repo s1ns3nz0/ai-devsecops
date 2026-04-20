@@ -18,6 +18,8 @@ _SEVERITY_MAP: dict[str, str] = {
     "INFO": "low",
 }
 
+_SUBPROCESS_TIMEOUT = 300  # 5 minutes
+
 
 class SemgrepScanner:
     """Semgrep SAST scanner wrapper."""
@@ -35,24 +37,36 @@ class SemgrepScanner:
             ["semgrep", "scan", "--json", "--quiet", target_path],
             capture_output=True,
             text=True,
+            timeout=_SUBPROCESS_TIMEOUT,
         )
+        if not result.stdout.strip():
+            logger.warning("Semgrep produced no output. stderr: %s", result.stderr[:500])
+            return []
         return self.parse_output(result.stdout)
 
     def parse_output(self, raw_output: str) -> list[Finding]:
         """Parse Semgrep JSON output into Finding objects."""
-        data = json.loads(raw_output)
+        try:
+            data = json.loads(raw_output)
+        except json.JSONDecodeError:
+            logger.warning("Semgrep output is not valid JSON")
+            return []
+
         results: list[dict[str, object]] = data.get("results", [])
 
         findings: list[Finding] = []
         for result in results:
             rule_id = str(result.get("check_id", ""))
+
             extra = result.get("extra", {})
-            assert isinstance(extra, dict)
+            if not isinstance(extra, dict):
+                extra = {}
             severity_raw = str(extra.get("severity", "INFO"))
             severity = _SEVERITY_MAP.get(severity_raw, "low")
 
             start = result.get("start", {})
-            assert isinstance(start, dict)
+            if not isinstance(start, dict):
+                start = {}
             line = int(start.get("line", 0))
 
             control_ids = self._control_mapper.map_finding("semgrep", rule_id)

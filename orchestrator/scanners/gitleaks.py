@@ -11,6 +11,8 @@ from orchestrator.types import Finding
 
 logger = logging.getLogger(__name__)
 
+_SUBPROCESS_TIMEOUT = 300  # 5 minutes
+
 
 class GitleaksScanner:
     """Gitleaks secrets scanner wrapper."""
@@ -28,13 +30,20 @@ class GitleaksScanner:
             ["gitleaks", "detect", "--source", target_path, "--report-format", "json", "--report-path", "-"],
             capture_output=True,
             text=True,
+            timeout=_SUBPROCESS_TIMEOUT,
         )
-        # Gitleaks returns exit code 1 when findings exist
+        if not result.stdout.strip():
+            logger.warning("Gitleaks produced no output. stderr: %s", result.stderr[:500])
+            return []
         return self.parse_output(result.stdout)
 
     def parse_output(self, raw_output: str) -> list[Finding]:
         """Parse Gitleaks JSON output into Finding objects."""
-        data = json.loads(raw_output)
+        try:
+            data = json.loads(raw_output)
+        except json.JSONDecodeError:
+            logger.warning("Gitleaks output is not valid JSON")
+            return []
         if not isinstance(data, list):
             return []
 
