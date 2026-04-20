@@ -33,33 +33,60 @@ class CheckovScanner:
         return self.parse_output(result.stdout)
 
     def parse_output(self, raw_output: str) -> list[Finding]:
-        """Parse Checkov JSON output into Finding objects."""
+        """Parse Checkov JSON output into Finding objects.
+
+        Checkov outputs either:
+        - A single dict: {"results": {"failed_checks": [...]}} (single framework)
+        - A list of dicts: [{"results": ...}, {"results": ...}] (multiple frameworks)
+        """
         data = json.loads(raw_output)
-        results = data.get("results", {})
-        failed_checks: list[dict[str, object]] = results.get("failed_checks", [])
+
+        # Normalize to list of result blocks
+        if isinstance(data, dict):
+            result_blocks = [data]
+        elif isinstance(data, list):
+            result_blocks = [item for item in data if isinstance(item, dict)]
+        else:
+            logger.warning("Unexpected Checkov output format: %s", type(data))
+            return []
 
         findings: list[Finding] = []
-        for check in failed_checks:
-            check_id = str(check["check_id"])
-            severity_raw = check.get("severity")
-            severity = str(severity_raw).lower() if severity_raw else "medium"
+        for block in result_blocks:
+            results = block.get("results", {})
+            if not isinstance(results, dict):
+                continue
 
-            line_range = check.get("file_line_range", [0])
-            line = int(line_range[0]) if isinstance(line_range, list) and line_range else 0
+            failed_checks = results.get("failed_checks", [])
+            if not isinstance(failed_checks, list):
+                continue
 
-            control_ids = self._control_mapper.map_finding("checkov", check_id)
+            for check in failed_checks:
+                if not isinstance(check, dict):
+                    continue
 
-            findings.append(
-                Finding(
-                    source="checkov",
-                    rule_id=check_id,
-                    severity=severity,
-                    file=str(check.get("file_path", "")),
-                    line=line,
-                    message=str(check.get("check_name", "")),
-                    control_ids=control_ids,
-                    product="",
+                check_id = str(check.get("check_id", ""))
+                if not check_id:
+                    continue
+
+                severity_raw = check.get("severity")
+                severity = str(severity_raw).lower() if severity_raw else "medium"
+
+                line_range = check.get("file_line_range", [0])
+                line = int(line_range[0]) if isinstance(line_range, list) and line_range else 0
+
+                control_ids = self._control_mapper.map_finding("checkov", check_id)
+
+                findings.append(
+                    Finding(
+                        source="checkov",
+                        rule_id=check_id,
+                        severity=severity,
+                        file=str(check.get("file_path", "")),
+                        line=line,
+                        message=str(check.get("check_name", "")),
+                        control_ids=control_ids,
+                        product="",
+                    )
                 )
-            )
 
         return findings

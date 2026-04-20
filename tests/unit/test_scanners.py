@@ -63,6 +63,63 @@ class TestCheckovParseOutput:
         assert by_rule["CKV_AWS_19"].line == 1
 
 
+class TestCheckovMultiFrameworkOutput:
+    def test_parses_list_format(self, mapper: ControlMapper) -> None:
+        """Checkov outputs a list when scanning multiple frameworks."""
+        scanner = CheckovScanner(control_mapper=mapper)
+        multi_output = json.dumps([
+            {
+                "check_type": "terraform",
+                "results": {
+                    "failed_checks": [
+                        {
+                            "check_id": "CKV_AWS_19",
+                            "check_name": "S3 encryption",
+                            "file_path": "/main.tf",
+                            "file_line_range": [10, 15],
+                            "severity": "HIGH",
+                        }
+                    ]
+                },
+            },
+            {
+                "check_type": "secrets",
+                "results": {
+                    "failed_checks": [
+                        {
+                            "check_id": "CKV_SECRET_1",
+                            "check_name": "Hardcoded secret",
+                            "file_path": "/config.py",
+                            "file_line_range": [3, 3],
+                        }
+                    ]
+                },
+            },
+        ])
+        findings = scanner.parse_output(multi_output)
+        assert len(findings) == 2
+        assert findings[0].rule_id == "CKV_AWS_19"
+        assert findings[1].rule_id == "CKV_SECRET_1"
+
+    def test_handles_empty_list(self, mapper: ControlMapper) -> None:
+        scanner = CheckovScanner(control_mapper=mapper)
+        findings = scanner.parse_output("[]")
+        assert findings == []
+
+    def test_handles_mixed_results(self, mapper: ControlMapper) -> None:
+        """Some framework blocks may have no failed checks."""
+        scanner = CheckovScanner(control_mapper=mapper)
+        output = json.dumps([
+            {"check_type": "terraform", "results": {"passed_checks": [], "failed_checks": []}},
+            {"check_type": "secrets", "results": {"failed_checks": [
+                {"check_id": "CKV_SECRET_2", "check_name": "Secret found", "file_path": "/app.py", "file_line_range": [1, 1]}
+            ]}},
+        ])
+        findings = scanner.parse_output(output)
+        assert len(findings) == 1
+        assert findings[0].rule_id == "CKV_SECRET_2"
+
+
 class TestCheckovFindingHasControlIds:
     def test_ckv_aws_19_has_control_ids(self, mapper: ControlMapper) -> None:
         scanner = CheckovScanner(control_mapper=mapper)
