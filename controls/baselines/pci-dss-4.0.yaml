@@ -73,6 +73,24 @@ controls:
         critical: required
 
   - control:
+      id: "PCI-DSS-6.3.2"
+      title: "Software inventory and bill of materials maintained"
+      framework: "pci-dss-4.0"
+      description: "An inventory of bespoke and custom software, and third-party software components incorporated into bespoke and custom software, is maintained to facilitate vulnerability and patch management."
+      verification_methods:
+        - scanner: sbom
+        - scanner: grype
+          severity_threshold: high
+      applicable_tiers:
+        - high
+        - critical
+      risk_tier_mapping:
+        low: not-required
+        medium: recommended
+        high: required
+        critical: required
+
+  - control:
       id: "PCI-DSS-10.2.1"
       title: "Audit log coverage for all system components"
       framework: "pci-dss-4.0"

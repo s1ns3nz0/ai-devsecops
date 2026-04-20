@@ -69,6 +69,7 @@ def demo_findings() -> list[Finding]:
     ]
 
 
+@patch("orchestrator.demo.SbomGenerator")
 @patch("orchestrator.demo.ScannerRunner")
 @patch("orchestrator.demo.ControlMapper")
 class TestDemo:
@@ -76,21 +77,23 @@ class TestDemo:
         self,
         mock_mapper_cls: MagicMock,
         mock_runner_cls: MagicMock,
+        mock_sbom_cls: MagicMock,
         demo_findings: list[Finding],
         tmp_path: Path,
     ) -> None:
         """Fixture-based demo runs without raising."""
-        self._setup_and_run(mock_mapper_cls, mock_runner_cls, demo_findings, tmp_path)
+        self._setup_and_run(mock_mapper_cls, mock_runner_cls, mock_sbom_cls, demo_findings, tmp_path)
 
     def test_demo_produces_evidence_file(
         self,
         mock_mapper_cls: MagicMock,
         mock_runner_cls: MagicMock,
+        mock_sbom_cls: MagicMock,
         demo_findings: list[Finding],
         tmp_path: Path,
     ) -> None:
         """Demo produces evidence JSON in output/evidence/."""
-        self._setup_and_run(mock_mapper_cls, mock_runner_cls, demo_findings, tmp_path)
+        self._setup_and_run(mock_mapper_cls, mock_runner_cls, mock_sbom_cls, demo_findings, tmp_path)
 
         evidence_dir = tmp_path / "project" / "output" / "evidence"
         json_files = list(evidence_dir.glob("*.json"))
@@ -104,11 +107,12 @@ class TestDemo:
         self,
         mock_mapper_cls: MagicMock,
         mock_runner_cls: MagicMock,
+        mock_sbom_cls: MagicMock,
         demo_findings: list[Finding],
         tmp_path: Path,
     ) -> None:
         """Demo produces findings.jsonl."""
-        self._setup_and_run(mock_mapper_cls, mock_runner_cls, demo_findings, tmp_path)
+        self._setup_and_run(mock_mapper_cls, mock_runner_cls, mock_sbom_cls, demo_findings, tmp_path)
 
         jsonl_path = tmp_path / "project" / "output" / "findings.jsonl"
         assert jsonl_path.exists()
@@ -123,11 +127,12 @@ class TestDemo:
         self,
         mock_mapper_cls: MagicMock,
         mock_runner_cls: MagicMock,
+        mock_sbom_cls: MagicMock,
         demo_findings: list[Finding],
         tmp_path: Path,
     ) -> None:
         """Demo produces risk assessment YAML."""
-        self._setup_and_run(mock_mapper_cls, mock_runner_cls, demo_findings, tmp_path)
+        self._setup_and_run(mock_mapper_cls, mock_runner_cls, mock_sbom_cls, demo_findings, tmp_path)
 
         ra_dir = tmp_path / "project" / "controls" / "products" / "payment-api" / "risk-assessments"
         yaml_files = list(ra_dir.glob("RA-*.yaml"))
@@ -137,6 +142,7 @@ class TestDemo:
     def _setup_and_run(
         mock_mapper_cls: MagicMock,
         mock_runner_cls: MagicMock,
+        mock_sbom_cls: MagicMock,
         findings: list[Finding],
         tmp_path: Path,
     ) -> None:
@@ -165,10 +171,26 @@ class TestDemo:
 
         # Mock scanners
         mock_mapper_cls.return_value = MagicMock()
+        mock_mapper_cls.return_value.map_finding.return_value = []
         mock_runner = MagicMock()
         mock_runner.run_all.return_value = list(findings)
         mock_runner_cls.return_value = mock_runner
 
-        # Patch _PROJECT_ROOT to our temp project
+        # Mock SBOM generator
+        from orchestrator.scanners.sbom import SbomResult
+
+        mock_sbom = MagicMock()
+        mock_sbom.generate.return_value = SbomResult(
+            sbom_path=str(tmp_path / "sbom.json"),
+            format="cyclonedx-json",
+            components_count=3,
+            raw_sbom={"components": []},
+        )
+        mock_sbom_cls.return_value = mock_sbom
+
+        # Patch _PROJECT_ROOT and GrypeScanner for SBOM scan
+        mock_grype = MagicMock()
+        mock_grype.scan_sbom.return_value = []
+
         with patch("orchestrator.demo._PROJECT_ROOT", project_root):
             run_demo(str(tmp_path / "target"), product="payment-api")

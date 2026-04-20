@@ -380,7 +380,7 @@ Sigma rules match 5 attack patterns in application logs.
 
 ## 14. Architecture Decision Records
 
-See [ADR.md](ADR.md) for the 8 key decisions:
+See [ADR.md](ADR.md) for the 9 key decisions:
 
 1. NIST RMF as internal methodology
 2. Orchestrator-centric (no MCP/Bedrock Agents)
@@ -390,6 +390,7 @@ See [ADR.md](ADR.md) for the 8 key decisions:
 6. MVP-0 → MVP layering
 7. Custom Python Sigma engine
 8. Evidence as generated artifact
+9. SBOM generation with Syft + Grype SBOM/container scanning
 
 Each ADR includes rationale, tradeoffs, and what was explicitly rejected.
 
@@ -401,7 +402,7 @@ Each ADR includes rationale, tradeoffs, and what was explicitly rejected.
 |---|---|
 | D3FEND mapping | Defensive countermeasure mapping bridging ATT&CK threats to controls |
 | Full SOC integration | Wazuh/ELK for production SIEM |
-| Container security | Image scanning, signing (cosign/Sigstore) |
+| Container signing | Image signing with cosign/Sigstore (scanning already implemented) |
 | DORA metrics | Deployment frequency, lead time, MTTR, change failure rate |
 | Multi-framework crosswalks | PCI↔NIST CSF, FISC↔ISO 27001 mapping files |
 | Backstage plugin | Developer self-service + auditor view UI |

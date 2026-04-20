@@ -47,7 +47,7 @@ make setup
 make demo          # fixture-based demo (no external tools needed)
 ```
 
-With scanners installed (checkov, semgrep, grype, gitleaks):
+With scanners installed (checkov, semgrep, grype, gitleaks, syft):
 
 ```bash
 make demo          # real scanner findings against sample vulnerable app
@@ -129,7 +129,8 @@ make demo-full     # AI-augmented risk assessment narratives
 | Component | What it does | Lines |
 |---|---|---|
 | **Controls Repository** | 12 OSCAL YAML controls (PCI-DSS, ASVS, FISC) with tier-based baseline selection | ~280 |
-| **Scanner Integration** | Checkov (IaC), Semgrep (SAST), Grype (SCA), Gitleaks (secrets) with Control ID mapping | ~500 |
+| **Scanner Integration** | Checkov (IaC), Semgrep (SAST), Grype (SCA + container), Gitleaks (secrets) with Control ID mapping | ~600 |
+| **SBOM Generation** | Syft → CycloneDX JSON, Grype SBOM scan, container image scanning | ~80 |
 | **Gate Engine** | YAML threshold evaluator — deterministic, no AI, 100% local | ~120 |
 | **Risk Assessment** | StaticRiskAssessor + BedrockRiskAssessor (Strategy pattern) | ~400 |
 | **Evidence Export** | JSONL append-only writer + JSON evidence report generator | ~260 |

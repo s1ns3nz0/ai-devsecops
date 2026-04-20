@@ -31,6 +31,8 @@ class ControlMapper:
         self._grype_thresholds: list[tuple[str, str]] = []
         # gitleaks: [control_id] (no rule filtering — any gitleaks finding maps)
         self._gitleaks_controls: list[str] = []
+        # sbom: [control_id] (SBOM generation evidence — maps when SBOM is produced)
+        self._sbom_controls: list[str] = []
 
         for control in self._controls_repo.controls.values():
             for vm in control.verification_methods:
@@ -48,6 +50,9 @@ class ControlMapper:
                 elif vm.scanner == "gitleaks":
                     self._gitleaks_controls.append(control.id)
 
+                elif vm.scanner == "sbom":
+                    self._sbom_controls.append(control.id)
+
     def map_finding(self, source: str, rule_id: str, severity: str | None = None) -> list[str]:
         """scanner name + rule_id → 해당하는 Control ID 목록.
 
@@ -64,6 +69,9 @@ class ControlMapper:
 
         if source == "gitleaks":
             return list(self._gitleaks_controls)
+
+        if source == "sbom":
+            return list(self._sbom_controls)
 
         return []
 

@@ -22,8 +22,8 @@ def repo() -> ControlsRepository:
 
 
 class TestLoadAll:
-    def test_loads_12_controls(self, repo: ControlsRepository) -> None:
-        assert len(repo.controls) == 12
+    def test_loads_13_controls(self, repo: ControlsRepository) -> None:
+        assert len(repo.controls) == 13
 
     def test_controls_are_control_instances(self, repo: ControlsRepository) -> None:
         for control in repo.controls.values():

@@ -18,7 +18,9 @@ from orchestrator.evidence.jsonl import JsonlWriter
 from orchestrator.gate.threshold import ThresholdEvaluator
 from orchestrator.scanners.control_mapper import ControlMapper
 from orchestrator.scanners.runner import ScannerRunner
+from orchestrator.scanners.sbom import SbomGenerator
 from orchestrator.sigma.engine import SigmaEngine
+from orchestrator.types import Finding
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -30,10 +32,11 @@ def run_demo(target_path: str, product: str = "payment-api") -> None:
     1. Load product manifest + risk profile, determine tier
     2. Select control baseline (RMF Step 3)
     3. Run all scanners (RMF Step 5)
-    4. Gate evaluation (RMF Step 6)
-    5. Risk assessment
-    6. Sigma detection (log analysis)
-    7. Evidence export
+    4. Generate SBOM + scan SBOM (supply chain)
+    5. Gate evaluation (RMF Step 6)
+    6. Risk assessment
+    7. Sigma detection (log analysis)
+    8. Evidence export
     """
     prod_dir = _PROJECT_ROOT / "controls" / "products" / product
     baselines_dir = str(_PROJECT_ROOT / "controls" / "baselines")
@@ -44,8 +47,8 @@ def run_demo(target_path: str, product: str = "payment-api") -> None:
     log_path = Path(target_path) / "logs" / "access.jsonl"
     sigma_rules_dir = str(_PROJECT_ROOT / "sigma" / "rules")
 
-    # ── [1/7] Load product manifest ─────────────────────────────
-    click.echo(f"[1/7] Loading product manifest: {product}")
+    # ── [1/8] Load product manifest ─────────────────────────────
+    click.echo(f"[1/8] Loading product manifest: {product}")
     manifest = load_manifest(str(prod_dir / "product-manifest.yaml"))
     profile = load_profile(str(prod_dir / "risk-profile.yaml"))
 
@@ -58,8 +61,8 @@ def run_demo(target_path: str, product: str = "payment-api") -> None:
     data_classes = ", ".join(manifest.data_classification)
     click.echo(f"      Product: {product} | Data: {data_classes} | Tier: {tier.value}")
 
-    # ── [2/7] Select control baseline ───────────────────────────
-    click.echo("\n[2/7] Selecting control baseline (RMF Step 3: Select)")
+    # ── [2/8] Select control baseline ───────────────────────────
+    click.echo("\n[2/8] Selecting control baseline (RMF Step 3: Select)")
     controls = select_baseline(repo, manifest, tier)
 
     fw_counts: dict[str, int] = {}
@@ -69,8 +72,8 @@ def run_demo(target_path: str, product: str = "payment-api") -> None:
     click.echo(f"      Frameworks applied: {fw_detail}")
     click.echo(f"      Total controls: {len(controls)}")
 
-    # ── [3/7] Run scanners ──────────────────────────────────────
-    click.echo("\n[3/7] Running scanners (RMF Step 5: Assess)")
+    # ── [3/8] Run scanners ──────────────────────────────────────
+    click.echo("\n[3/8] Running scanners (RMF Step 5: Assess)")
     mapper = ControlMapper(repo)
     from orchestrator.cli import _build_scanners
 
@@ -93,8 +96,42 @@ def run_demo(target_path: str, product: str = "payment-api") -> None:
     writer = JsonlWriter(jsonl_path)
     writer.write_findings(findings)
 
-    # ── [4/7] Gate evaluation ───────────────────────────────────
-    click.echo("\n[4/7] Gate evaluation (RMF Step 6: Authorize)")
+    # ── [4/8] SBOM generation + supply chain scan ─────────────
+    click.echo("\n[4/8] SBOM generation (supply chain)")
+    sbom_generator = SbomGenerator()
+    try:
+        sbom_result = sbom_generator.generate(target_path, str(output_dir))
+        click.echo(f"      SBOM: {sbom_result.components_count} components ({sbom_result.format})")
+
+        # Scan SBOM with Grype for vulnerability analysis
+        from orchestrator.scanners.grype import GrypeScanner
+
+        grype = GrypeScanner(mapper)
+        sbom_findings = grype.scan_sbom(sbom_result.sbom_path)
+        for f in sbom_findings:
+            f.product = product
+        findings.extend(sbom_findings)
+        click.echo(f"      SBOM scan: {len(sbom_findings)} vulnerabilities")
+
+        # Register SBOM generation as evidence (maps to PCI-DSS-6.3.2)
+        sbom_evidence = Finding(
+            source="sbom",
+            rule_id="sbom-generated",
+            severity="info",
+            file=sbom_result.sbom_path,
+            line=0,
+            message=f"CycloneDX SBOM generated: {sbom_result.components_count} components",
+            control_ids=mapper.map_finding("sbom", "sbom-generated"),
+            product=product,
+        )
+        findings.append(sbom_evidence)
+        writer.write_findings([sbom_evidence])
+        click.echo(f"      Evidence: SBOM artifact stored at {sbom_result.sbom_path}")
+    except Exception:
+        click.echo("      SBOM generation skipped (syft not installed or error)")
+
+    # ── [5/8] Gate evaluation ───────────────────────────────────
+    click.echo("\n[5/8] Gate evaluation (RMF Step 6: Authorize)")
     evaluator = ThresholdEvaluator(profile)
     gate = evaluator.evaluate(findings, tier)
     writer.write_gate_decision(gate, product)
@@ -104,8 +141,8 @@ def run_demo(target_path: str, product: str = "payment-api") -> None:
     else:
         click.echo(f"      {gate.reason}")
 
-    # ── [5/7] Risk assessment ───────────────────────────────────
-    click.echo("\n[5/7] Risk assessment")
+    # ── [6/8] Risk assessment ───────────────────────────────────
+    click.echo("\n[6/8] Risk assessment")
     report = assessor.assess(findings, manifest, controls, "pre_merge")
     writer.write_risk_report(report)
 
@@ -127,8 +164,8 @@ def run_demo(target_path: str, product: str = "payment-api") -> None:
     }
     (ra_dir / f"{report.id}.yaml").write_text(yaml.dump(ra_data, default_flow_style=False))
 
-    # ── [6/7] Detection analysis ────────────────────────────────
-    click.echo("\n[6/7] Detection analysis")
+    # ── [7/8] Detection analysis ────────────────────────────────
+    click.echo("\n[7/8] Detection analysis")
     sigma_matches = []
     if log_path.exists():
         engine = SigmaEngine(sigma_rules_dir)
@@ -146,8 +183,8 @@ def run_demo(target_path: str, product: str = "payment-api") -> None:
     else:
         click.echo("      No log file found, skipping detection")
 
-    # ── [7/7] Evidence export ───────────────────────────────────
-    click.echo("\n[7/7] Evidence export")
+    # ── [8/8] Evidence export ───────────────────────────────────
+    click.echo("\n[8/8] Evidence export")
     exporter = EvidenceExporter(jsonl_reader=writer, controls_repo=repo)
     evidence = exporter.export(product=product, output_path=evidence_dir)
 
