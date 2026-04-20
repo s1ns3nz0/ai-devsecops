@@ -1,0 +1,15 @@
+product:
+  name: payment-api
+  description: "QR code payment confirmation service"
+  data_classification:
+    - PCI
+    - PII-financial
+  jurisdiction:
+    - JP
+  deployment:
+    cloud: AWS
+    compute: EKS
+    region: ap-northeast-1
+  integrations:
+    - external-payment-gateway
+    - internal-user-db

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["product"],
+  "properties": {
+    "product": {
+      "type": "object",
+      "required": ["name", "description", "data_classification", "jurisdiction", "deployment"],
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "data_classification": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "jurisdiction": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "deployment": {
+          "type": "object",
+          "required": ["cloud", "compute", "region"],
+          "properties": {
+            "cloud": { "type": "string" },
+            "compute": { "type": "string" },
+            "region": { "type": "string" }
+          }
+        },
+        "integrations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

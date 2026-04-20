@@ -1,0 +1,88 @@
+{
+  "project": "Compliance-Driven AI Risk Platform",
+  "phase": "0-mvp0",
+  "steps": [
+    {
+      "step": 0,
+      "name": "project-and-types",
+      "status": "completed",
+      "started_at": "2026-04-19T19:18:00+0900",
+      "summary": "pyproject.toml, Makefile, directory skeleton, core types (RiskTier/ProductManifest/RiskProfile/Finding/RiskReport/GateDecision), config parsers with JSON Schema validation, fixture YAMLs, 18 tests passing",
+      "completed_at": "2026-04-19T19:21:23+0900"
+    },
+    {
+      "step": 1,
+      "name": "controls-repo",
+      "status": "completed",
+      "started_at": "2026-04-19T19:21:23+0900",
+      "summary": "12 OSCAL controls (PCI-DSS 5, ASVS 4, FISC 3), tier-mappings.yaml, ControlsRepository class, select_baseline function, Control/VerificationMethod models, 14 new tests (32 total passing)",
+      "completed_at": "2026-04-19T19:24:51+0900"
+    },
+    {
+      "step": 2,
+      "name": "scanner-integration",
+      "status": "completed",
+      "started_at": "2026-04-19T19:24:51+0900",
+      "summary": "Scanner Protocol, ControlMapper (verification_methods→Control ID), 4 scanner wrappers (Checkov/Semgrep/Grype/Gitleaks), ScannerRunner with log-and-continue failure policy, 4 fixture files, 27 new tests (59 total passing)",
+      "completed_at": "2026-04-19T19:29:34+0900"
+    },
+    {
+      "step": 3,
+      "name": "gate-engine",
+      "status": "completed",
+      "started_at": "2026-04-19T19:29:34+0900",
+      "summary": "ThresholdEvaluator (deterministic, no AI, 100% local), GateDecision with threshold_results list, 8 new tests (67 total passing)",
+      "completed_at": "2026-04-19T19:32:43+0900"
+    },
+    {
+      "step": 4,
+      "name": "risk-scoring",
+      "status": "completed",
+      "started_at": "2026-04-20T06:35:31+0900",
+      "summary": "RiskAssessor Protocol, compute_risk_score (SP 800-30 Likelihood×Impact), StaticRiskAssessor (deterministic categorize+assess), RA-YYYY-MMDD-NNN report IDs, mypy type fixes, 13 new tests (80 total passing)",
+      "completed_at": "2026-04-20T06:36:50+0900"
+    },
+    {
+      "step": 5,
+      "name": "bedrock-assessor",
+      "status": "completed",
+      "started_at": "2026-04-20T06:36:50+0900",
+      "summary": "BedrockRiskAssessor (Strategy pattern, Bedrock InvokeModel API), BedrockClient wrapper, prompt templates (categorization+assessment), StaticRiskAssessor fallback on failure/invalid JSON, deterministic score preserved (AI cannot override), 9 new unit tests + 3 prompt tests + 2 contract tests (91 unit + 2 contract total passing)",
+      "completed_at": "2026-04-20T06:41:08+0900"
+    },
+    {
+      "step": 6,
+      "name": "evidence-export",
+      "status": "completed",
+      "started_at": "2026-04-20T06:41:08+0900",
+      "summary": "JsonlWriter (append-only JSONL with timestamp/hash, product/control_id filtering), EvidenceExporter (Control ID primary key, full/partial/none status, coverage %, JSON output), 15 new tests (104 total passing)",
+      "completed_at": "2026-04-20T06:44:15+0900"
+    },
+    {
+      "step": 7,
+      "name": "sigma-engine",
+      "status": "completed",
+      "started_at": "2026-04-20T06:44:15+0900",
+      "summary": "SigmaRule/SigmaMatch models, SigmaEngine (144 LOC, field matching + contains/startswith/endswith modifiers + AND/OR conditions), 4 Sigma rules (brute_force/sqli/exfil/privesc with ATT&CK tags + Control IDs), sample JSONL logs, 10 new tests (114 total passing)",
+      "completed_at": "2026-04-20T06:46:30+0900"
+    },
+    {
+      "step": 8,
+      "name": "cli-commands",
+      "status": "completed",
+      "started_at": "2026-04-20T06:46:30+0900",
+      "summary": "Click CLI (init/scan/assess/export/detect), get_assessor Strategy selection, structured output formatting, exit code 0/1 for gate pass/fail, 6 new tests (120 total passing)",
+      "completed_at": "2026-04-20T06:51:36+0900"
+    },
+    {
+      "step": 9,
+      "name": "demo-integration",
+      "status": "completed",
+      "started_at": "2026-04-20T06:51:36+0900",
+      "summary": "Sample-app fixtures (app.py/config.py/main.tf/requirements.txt/logs), run_demo E2E flow (7 steps: manifest→baseline→scan→gate→assess→detect→export), demo CLI command, Makefile demo/demo-full targets, README.md, 4 new tests (124 total passing)",
+      "completed_at": "2026-04-20T06:59:50+0900"
+    }
+  ],
+  "created_at": "2026-04-19T19:18:00+0900",
+  "completed_at": "2026-04-20T06:59:50+0900"
+}

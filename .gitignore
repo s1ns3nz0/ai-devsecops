@@ -7,3 +7,16 @@ tsconfig.tsbuildinfo
 # phase execution outputs
 phases/**/phase*-output.json
 phases/**/step*-output.json
+
+# Python
+__pycache__/
+.mypy_cache/
+*.egg-info/
+dist/
+*.pyc
+
+# Platform
+output/
+*.jsonl
+!tests/fixtures/**/*.jsonl
+.env
