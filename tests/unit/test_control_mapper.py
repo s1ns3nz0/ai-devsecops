@@ -75,3 +75,13 @@ class TestMapRuleToMultipleControls:
     def test_gitleaks_any_rule_maps_to_two_controls(self, mapper: ControlMapper) -> None:
         control_ids = mapper.map_finding("gitleaks", "any-rule-id")
         assert len(control_ids) >= 2
+
+
+class TestSbomMapping:
+    def test_sbom_maps_to_supply_chain_control(self, mapper: ControlMapper) -> None:
+        control_ids = mapper.map_finding("sbom", "sbom-generated")
+        assert "PCI-DSS-6.3.2" in control_ids
+
+    def test_sbom_any_rule_id_maps(self, mapper: ControlMapper) -> None:
+        control_ids = mapper.map_finding("sbom", "any-rule")
+        assert len(control_ids) >= 1

@@ -64,33 +64,38 @@ make demo-full     # AI-augmented risk assessment narratives
 > Replay the demo locally: `asciinema play assets/demo.cast`
 
 ```
-[1/7] Loading product manifest: payment-api
+[1/8] Loading product manifest: payment-api
       Product: payment-api | Data: PCI, PII-financial | Tier: critical
 
-[2/7] Selecting control baseline (RMF Step 3: Select)
-      Frameworks applied: PCI-DSS-4.0 (5), ASVS-5.0-L3 (4), FISC (3)
-      Total controls: 12
+[2/8] Selecting control baseline (RMF Step 3: Select)
+      Frameworks applied: PCI-DSS-4.0 (6), ASVS-5.0-L3 (4), FISC (3)
+      Total controls: 13
 
-[3/7] Running scanners (RMF Step 5: Assess)
+[3/8] Running scanners (RMF Step 5: Assess)
       Checkov:  20 findings (IaC misconfigurations)
       Semgrep:   0 findings
       Grype:    20 findings (dependency CVEs)
       Gitleaks:  1 finding  (hardcoded AWS key)
 
-[4/7] Gate evaluation (RMF Step 6: Authorize)
+[4/8] SBOM generation (supply chain)
+      SBOM: 12 components (cyclonedx-json)
+      SBOM scan: 3 vulnerabilities
+      Evidence: SBOM artifact stored
+
+[5/8] Gate evaluation (RMF Step 6: Authorize)
       BLOCKED: max_critical_findings violated (found 1, limit 0)
       BLOCKED: max_secrets_detected violated (found 1, limit 0)
 
-[5/7] Risk assessment
+[6/8] Risk assessment
       Risk score: 9.0/10
       Mode: static (deterministic scoring)
 
-[6/7] Detection analysis
+[7/8] Detection analysis
       Sigma rules: 5 matches (brute force, SQLi, exfiltration)
       ATT&CK coverage: T1110, T1190, T1048
 
-[7/7] Evidence export
-      Controls coverage: 75.0%
+[8/8] Evidence export
+      Controls coverage: 76.9%
       Report: output/evidence/EVD-2026-0420-001.json
 ```
 
@@ -128,7 +133,7 @@ make demo-full     # AI-augmented risk assessment narratives
 
 | Component | What it does | Lines |
 |---|---|---|
-| **Controls Repository** | 12 OSCAL YAML controls (PCI-DSS, ASVS, FISC) with tier-based baseline selection | ~280 |
+| **Controls Repository** | 13 OSCAL YAML controls (PCI-DSS, ASVS, FISC) with tier-based baseline selection | ~280 |
 | **Scanner Integration** | Checkov (IaC), Semgrep (SAST), Grype (SCA + container), Gitleaks (secrets) with Control ID mapping | ~600 |
 | **SBOM Generation** | Syft → CycloneDX JSON, Grype SBOM scan, container image scanning | ~80 |
 | **Gate Engine** | YAML threshold evaluator — deterministic, no AI, 100% local | ~120 |
@@ -141,7 +146,7 @@ make demo-full     # AI-augmented risk assessment narratives
 
 | Framework | Controls | Scope |
 |---|---|---|
-| PCI DSS 4.0 | 5 controls (Sec 1, 3, 6, 10) | Payment card data protection |
+| PCI DSS 4.0 | 6 controls (Sec 1, 3, 6, 10) | Payment card data protection + supply chain |
 | OWASP ASVS 5.0 L3 | 4 controls (V2, V3, V5, V14) | Application security verification |
 | FISC Safety Standard | 3 controls | Japanese financial industry security |
 
@@ -210,7 +215,7 @@ make lint            # ruff + mypy strict mode
 
 - [Architecture Design](docs/architecture-design.md) — full design document: positioning, risk methodology, AI strategy, gating, E2E scenario
 - [Architecture](docs/ARCHITECTURE.md) — system design, data flow, directory structure
-- [ADR](docs/ADR.md) — 8 architecture decision records with rationale
+- [ADR](docs/ADR.md) — 9 architecture decision records with rationale
 - [PRD](docs/PRD.md) — product requirements and MVP scope
 
 ## Target Roles
