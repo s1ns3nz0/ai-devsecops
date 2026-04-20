@@ -3,7 +3,6 @@ name: Security Gate
 on:
   pull_request:
     branches: [main]
-  # Allow manual trigger for demo purposes
   workflow_dispatch:
     inputs:
       product:
@@ -11,11 +10,16 @@ on:
         default: "payment-api"
         type: string
 
+concurrency:
+  group: security-gate-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   security-gate:
     runs-on: ubuntu-latest
     permissions:
-      pull-requests: write  # Post gate results as PR comment
+      contents: read
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
@@ -24,6 +28,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: "pip"
 
       - name: Install platform
         run: pip install -e ".[dev]"
@@ -39,6 +44,7 @@ jobs:
         id: assess
         continue-on-error: true
         run: |
+          set -o pipefail
           PRODUCT="${{ inputs.product || 'payment-api' }}"
           echo "product=${PRODUCT}" >> "$GITHUB_OUTPUT"
 
@@ -46,8 +52,6 @@ jobs:
             --product "${PRODUCT}" \
             --trigger pre_merge \
             2>&1 | tee assessment-output.txt
-
-          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
 
       - name: Generate SBOM
         continue-on-error: true
@@ -79,9 +83,9 @@ jobs:
           script: |
             const fs = require('fs');
             const output = fs.readFileSync('assessment-output.txt', 'utf8');
-            const exitCode = '${{ steps.assess.outcome }}';
-            const icon = exitCode === 'success' ? '✅' : '🚫';
-            const status = exitCode === 'success' ? 'PASSED' : 'BLOCKED';
+            const outcome = '${{ steps.assess.outcome }}';
+            const icon = outcome === 'success' ? '✅' : '🚫';
+            const status = outcome === 'success' ? 'PASSED' : 'BLOCKED';
 
             let evidenceReport = '';
             try {
@@ -100,29 +104,56 @@ jobs:
                 }
                 evidenceReport += `\n**Coverage: ${report.summary.coverage_percentage}%** (${report.summary.fully_evidenced} full, ${report.summary.partially_evidenced} partial, ${report.summary.no_evidence} none)\n`;
               }
-            } catch (e) { /* no report available */ }
+            } catch (e) { /* no evidence report available */ }
 
-            const body = `## ${icon} Security Gate: ${status}
+            const marker = '<!-- security-gate-result -->';
+            const body = [
+              marker,
+              `## ${icon} Security Gate: ${status}`,
+              '',
+              '<details>',
+              '<summary>Assessment Output</summary>',
+              '',
+              '```',
+              output,
+              '```',
+              '',
+              '</details>',
+              evidenceReport,
+              '',
+              '---',
+              '*Compliance-Driven AI Risk Platform — gate decision is deterministic (YAML thresholds), AI is advisory only*',
+            ].join('\n');
 
-            <details>
-            <summary>Assessment Output</summary>
-
-            \`\`\`
-            ${output}
-            \`\`\`
-
-            </details>
-            ${evidenceReport}
-
-            ---
-            *Compliance-Driven AI Risk Platform — gate decision is deterministic (YAML thresholds), AI is advisory only*`;
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
+            // Find and update existing comment instead of creating spam
+            const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: body,
+              issue_number: context.issue.number,
             });
+            const existing = comments.find(c => c.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body,
+              });
+            }
+
+      - name: Write job summary
+        if: always()
+        run: |
+          echo "## Security Gate Results" >> "$GITHUB_STEP_SUMMARY"
+          cat assessment-output.txt >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
 
       - name: Upload evidence artifacts
         if: always()
@@ -134,7 +165,7 @@ jobs:
             output/evidence/
             output/sbom-*.cdx.json
             assessment-output.txt
-          retention-days: 90
+          retention-days: 365
 
       - name: Enforce gate decision
         if: steps.assess.outcome == 'failure'
