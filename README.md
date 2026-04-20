@@ -61,6 +61,8 @@ make demo-full     # AI-augmented risk assessment narratives
 
 ## Demo Output
 
+> Replay the demo locally: `asciinema play assets/demo.cast`
+
 ```
 [1/7] Loading product manifest: payment-api
       Product: payment-api | Data: PCI, PII-financial | Tier: critical
@@ -169,6 +171,31 @@ Deterministic risk score       -->    + AI cross-signal narrative
 Raw JSON evidence              -->    + Auditor-facing prose
 Manual gap analysis            -->    + AI identifies missing controls
 ```
+
+## Evidence Report Sample
+
+Query: *"Show evidence for ASVS-V2.10.1 (No hardcoded credentials)"*
+
+```json
+{
+  "control_id": "ASVS-V2.10.1",
+  "title": "No hardcoded credentials in source code",
+  "framework": "asvs-5.0-L3",
+  "status": "partial",
+  "evidence": {
+    "findings": [{
+      "source": "gitleaks",
+      "rule_id": "generic-api-key",
+      "severity": "critical",
+      "message": "Detected a Generic API Key",
+      "control_ids": ["ASVS-V2.10.1", "PCI-DSS-3.5.1"]
+    }],
+    "scanners_used": ["gitleaks"]
+  }
+}
+```
+
+One Control ID traces from framework requirement to scanner finding to evidence artifact.
 
 ## Testing
 
