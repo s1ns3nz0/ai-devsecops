@@ -1,5 +1,9 @@
 # Compliance-Driven AI Risk Platform
 
+[![CI](https://github.com/s1ns3nz0/ai-devsecops/actions/workflows/ci.yml/badge.svg)](https://github.com/s1ns3nz0/ai-devsecops/actions/workflows/ci.yml)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 **A DevSecOps platform that treats compliance frameworks as the single source of truth.**
 
 Instead of aggregating scanner output and mapping to compliance as an afterthought, this platform starts from the compliance framework and derives verification activities from applicable controls. AI translates context between layers without making gate decisions.
@@ -176,9 +180,10 @@ make lint            # ruff + mypy strict mode
 
 ## Documentation
 
+- [Architecture Design](docs/architecture-design.md) — full design document: positioning, risk methodology, AI strategy, gating, E2E scenario
 - [Architecture](docs/ARCHITECTURE.md) — system design, data flow, directory structure
 - [ADR](docs/ADR.md) — 8 architecture decision records with rationale
-- [PRD](docs/PRD.md) — product requirements and E2E scenario
+- [PRD](docs/PRD.md) — product requirements and MVP scope
 
 ## Target Roles
 
