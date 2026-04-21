@@ -1,0 +1,86 @@
+# DefectDojo — Finding triage and evidence source of truth
+# Usage: docker compose up -d
+# First run takes ~5 minutes for database initialization.
+
+services:
+  defectdojo-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: defectdojo
+      POSTGRES_USER: defectdojo
+      POSTGRES_PASSWORD: defectdojo
+    volumes:
+      - defectdojo-postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U defectdojo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  defectdojo-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  defectdojo-django:
+    image: defectdojo/defectdojo-django:2.38.1
+    depends_on:
+      defectdojo-postgres:
+        condition: service_healthy
+      defectdojo-redis:
+        condition: service_healthy
+    environment:
+      DD_ADMIN_USER: admin
+      DD_ADMIN_PASSWORD: admin
+      DD_ADMIN_MAIL: admin@example.com
+      DD_DATABASE_URL: postgresql://defectdojo:defectdojo@defectdojo-postgres:5432/defectdojo
+      DD_CELERY_BROKER_URL: redis://defectdojo-redis:6379/0
+      DD_SECRET_KEY: dev-only-secret-key-do-not-use-in-production
+      DD_CREDENTIAL_AES_256_KEY: dev-only-aes-key-do-not-use
+    restart: unless-stopped
+
+  defectdojo-nginx:
+    image: defectdojo/defectdojo-nginx:2.38.1
+    depends_on:
+      - defectdojo-django
+    ports:
+      - "127.0.0.1:8080:8080"
+    restart: unless-stopped
+
+  defectdojo-celery-beat:
+    image: defectdojo/defectdojo-django:2.38.1
+    depends_on:
+      defectdojo-postgres:
+        condition: service_healthy
+      defectdojo-redis:
+        condition: service_healthy
+    environment:
+      DD_DATABASE_URL: postgresql://defectdojo:defectdojo@defectdojo-postgres:5432/defectdojo
+      DD_CELERY_BROKER_URL: redis://defectdojo-redis:6379/0
+      DD_SECRET_KEY: dev-only-secret-key-do-not-use-in-production
+      DD_CREDENTIAL_AES_256_KEY: dev-only-aes-key-do-not-use
+    command: celery --app dojo beat --loglevel INFO
+    restart: unless-stopped
+
+  defectdojo-celery-worker:
+    image: defectdojo/defectdojo-django:2.38.1
+    depends_on:
+      defectdojo-postgres:
+        condition: service_healthy
+      defectdojo-redis:
+        condition: service_healthy
+    environment:
+      DD_DATABASE_URL: postgresql://defectdojo:defectdojo@defectdojo-postgres:5432/defectdojo
+      DD_CELERY_BROKER_URL: redis://defectdojo-redis:6379/0
+      DD_SECRET_KEY: dev-only-secret-key-do-not-use-in-production
+      DD_CREDENTIAL_AES_256_KEY: dev-only-aes-key-do-not-use
+    command: celery --app dojo worker --loglevel INFO
+    restart: unless-stopped
+
+volumes:
+  defectdojo-postgres-data:

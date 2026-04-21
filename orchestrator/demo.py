@@ -130,14 +130,33 @@ def run_demo(target_path: str, product: str = "payment-api") -> None:
     except Exception:
         click.echo("      SBOM generation skipped (syft not installed or error)")
 
-    # ── [5/8] Gate evaluation ───────────────────────────────────
+    # ── [5/8] Gate evaluation — two additive layers (YAML + OPA) ──
     click.echo("\n[5/8] Gate evaluation (RMF Step 6: Authorize)")
-    evaluator = ThresholdEvaluator(profile)
-    gate = evaluator.evaluate(findings, tier)
+    from orchestrator.gate.combined import CombinedGateEvaluator
+    from orchestrator.gate.opa import OpaEvaluator
+
+    threshold_eval = ThresholdEvaluator(profile)
+    opa_eval = OpaEvaluator(str(_PROJECT_ROOT / "rego" / "gates"))
+    combined = CombinedGateEvaluator(threshold_eval, opa_eval)
+
+    context: dict[str, object] = {
+        "product": product,
+        "tier": tier.value,
+        "frameworks": profile.frameworks,
+        "findings_count": {
+            s: sum(1 for f in findings if f.severity == s)
+            for s in ["critical", "high", "medium", "low"]
+        },
+        "pci_scope_count": sum(
+            1 for f in findings if any(c.startswith("PCI-DSS") for c in f.control_ids)
+        ),
+        "secrets_count": sum(1 for f in findings if f.source == "gitleaks"),
+    }
+    gate = combined.evaluate(findings, tier, context)
     writer.write_gate_decision(gate, product)
 
     if gate.passed:
-        click.echo("      PASSED — all checks within thresholds")
+        click.echo(f"      {gate.reason}")
     else:
         click.echo(f"      {gate.reason}")
 
@@ -146,9 +165,25 @@ def run_demo(target_path: str, product: str = "payment-api") -> None:
     report = assessor.assess(findings, manifest, controls, "pre_merge")
     writer.write_risk_report(report)
 
-    mode = "AI-augmented" if os.environ.get("BEDROCK_MODEL_ID") else "static"
+    is_ai_mode = bool(os.environ.get("BEDROCK_MODEL_ID"))
+    mode = "AI-augmented (Claude Sonnet)" if is_ai_mode else "static"
     click.echo(f"      Risk score: {report.risk_score:.1f}/10")
     click.echo(f"      Mode: {mode}")
+
+    if is_ai_mode:
+        # Show AI narrative (first 200 chars to keep demo output readable)
+        narrative_preview = report.narrative[:200]
+        if len(report.narrative) > 200:
+            narrative_preview += "..."
+        click.echo(f"      Narrative: \"{narrative_preview}\"")
+        if report.cross_signal_insights:
+            click.echo("      Cross-signal insights:")
+            for insight in report.cross_signal_insights:
+                click.echo(f"        - \"{insight}\"")
+        if report.recommendations:
+            click.echo("      Recommendations:")
+            for rec in report.recommendations:
+                click.echo(f"        - \"{rec}\"")
 
     # Save risk assessment YAML
     ra_dir = prod_dir / "risk-assessments"
@@ -185,12 +220,38 @@ def run_demo(target_path: str, product: str = "payment-api") -> None:
 
     # ── [8/8] Evidence export ───────────────────────────────────
     click.echo("\n[8/8] Evidence export")
-    exporter = EvidenceExporter(jsonl_reader=writer, controls_repo=repo)
+
+    # Evidence path: optionally sync to DefectDojo
+    dd_client = None
+    dd_status = "skipped (not configured)"
+    try:
+        dd_key = os.environ.get("DD_API_KEY", "")
+        if dd_key:
+            from orchestrator.integrations.defectdojo import DefectDojoClient
+
+            dd_url = os.environ.get("DEFECTDOJO_URL", "http://127.0.0.1:8080")
+            dd = DefectDojoClient(base_url=dd_url, api_key=dd_key)
+            if dd.health_check():
+                product_id = dd.get_or_create_product(product)
+                engagement_id = dd.get_or_create_engagement(product_id, "demo-scan")
+                dd.import_findings(engagement_id, findings)
+                dd_client = dd
+                dd_status = f"synced ({len(findings)} findings)"
+            else:
+                dd_status = "skipped (not reachable)"
+    except Exception:
+        dd_status = "skipped (error)"
+
+    jsonl_count = len(writer.read_findings(product=product))
+    click.echo(f"      JSONL: {jsonl_path} ({jsonl_count} entries)")
+    click.echo(f"      DefectDojo: {dd_status}")
+
+    exporter = EvidenceExporter(jsonl_reader=writer, controls_repo=repo, defectdojo_client=dd_client)
     evidence = exporter.export(product=product, output_path=evidence_dir)
 
     report_file = Path(evidence_dir) / f"{evidence['report_id']}.json"
     summary = evidence["summary"]
     click.echo(f"      Report: {report_file}")
-    click.echo(f"      Controls coverage: {summary['coverage_percentage']}%")
+    click.echo(f"      Coverage: {summary['coverage_percentage']}%")
 
     click.echo(f"\n\u2713 Demo complete. See {output_dir}/ for full results.")

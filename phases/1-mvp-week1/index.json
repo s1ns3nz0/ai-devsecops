@@ -2,12 +2,63 @@
   "project": "Compliance-Driven AI Risk Platform",
   "phase": "1-mvp-week1",
   "steps": [
-    { "step": 0, "name": "opa-engine", "status": "pending" },
-    { "step": 1, "name": "rego-policies", "status": "pending" },
-    { "step": 2, "name": "gate-integration", "status": "pending" },
-    { "step": 3, "name": "bedrock-live", "status": "pending" },
-    { "step": 4, "name": "defectdojo-compose", "status": "pending" },
-    { "step": 5, "name": "defectdojo-client", "status": "pending" },
-    { "step": 6, "name": "evidence-defectdojo", "status": "pending" }
-  ]
+    {
+      "step": 0,
+      "name": "opa-engine",
+      "status": "completed",
+      "started_at": "2026-04-21T12:27:14+0900",
+      "summary": "OpaEvaluator (orchestrator/gate/opa.py) — subprocess OPA CLI, graceful skip when not installed, 5 unit tests",
+      "completed_at": "2026-04-21T12:30:34+0900"
+    },
+    {
+      "step": 1,
+      "name": "rego-policies",
+      "status": "completed",
+      "started_at": "2026-04-21T12:30:34+0900",
+      "completed_at": "2026-04-21T12:32:33+0900",
+      "summary": "4 Rego policies (PCI critical, secrets, high-severity threshold, IaC network segmentation) + 6 tests (3 structural + 3 OPA integration w/ skip)"
+    },
+    {
+      "step": 2,
+      "name": "gate-integration",
+      "status": "completed",
+      "started_at": "2026-04-21T12:32:33+0900",
+      "completed_at": "2026-04-21T12:35:47+0900",
+      "summary": "CombinedGateEvaluator (YAML+OPA two-layer gate) + CLI/demo integration + 5 unit tests"
+    },
+    {
+      "step": 3,
+      "name": "bedrock-live",
+      "status": "completed",
+      "started_at": "2026-04-21T12:35:47+0900",
+      "completed_at": "2026-04-21T12:41:00+0900",
+      "summary": "Bedrock live test script (scripts/test_bedrock.py), enhanced error handling + timing/token logging in BedrockClient, AI-mode demo output (narrative/insights/recommendations), envelope contract fixtures"
+    },
+    {
+      "step": 4,
+      "name": "defectdojo-compose",
+      "status": "completed",
+      "started_at": "2026-04-21T12:41:00+0900",
+      "completed_at": "2026-04-21T12:42:40+0900",
+      "summary": "Docker Compose (6 services: django/nginx/celery-beat/celery-worker/postgres/redis), Makefile docker targets, 4 unit tests validating YAML/services/volume/localhost binding"
+    },
+    {
+      "step": 5,
+      "name": "defectdojo-client",
+      "status": "completed",
+      "started_at": "2026-04-21T12:42:40+0900",
+      "completed_at": "2026-04-21T12:46:41+0900",
+      "summary": "DefectDojoClient (orchestrator/integrations/defectdojo.py) — urllib-based REST client, finding_to_defectdojo converter with hash dedup + control_id tags, CLI sync command, 4 unit + 4 contract tests"
+    },
+    {
+      "step": 6,
+      "name": "evidence-defectdojo",
+      "status": "completed",
+      "started_at": "2026-04-21T12:46:41+0900",
+      "completed_at": "2026-04-21T12:51:46+0900",
+      "summary": "EvidenceExporter extended with DefectDojo as preferred data source (JSONL fallback), assess command auto-syncs to DD, demo shows DD status, 3 unit tests"
+    }
+  ],
+  "created_at": "2026-04-21T12:27:14+0900",
+  "completed_at": "2026-04-21T12:51:46+0900"
 }

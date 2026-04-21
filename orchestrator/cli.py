@@ -257,13 +257,48 @@ def assess(
     writer = JsonlWriter(jsonl_path)
     writer.write_findings(findings)
 
-    # [3/4] Gate evaluation
-    evaluator = ThresholdEvaluator(profile)
-    gate = evaluator.evaluate(findings, tier)
+    # Evidence path: optionally sync to DefectDojo (after JSONL, before gate)
+    try:
+        from orchestrator.integrations.defectdojo import DefectDojoClient
+
+        dd_url = os.environ.get("DEFECTDOJO_URL", "http://127.0.0.1:8080")
+        dd_key = os.environ.get("DD_API_KEY", "")
+        if dd_key:
+            dd = DefectDojoClient(base_url=dd_url, api_key=dd_key)
+            if dd.health_check():
+                product_id = dd.get_or_create_product(product)
+                engagement_id = dd.get_or_create_engagement(product_id, f"assess-{trigger}")
+                dd.import_findings(engagement_id, findings)
+                click.echo(f"      DefectDojo: {len(findings)} findings synced")
+    except Exception:
+        pass  # DefectDojo is optional (evidence path only)
+
+    # [3/4] Gate evaluation — two additive layers (YAML + OPA)
+    from orchestrator.gate.combined import CombinedGateEvaluator
+    from orchestrator.gate.opa import OpaEvaluator
+
+    threshold_eval = ThresholdEvaluator(profile)
+    opa_eval = OpaEvaluator(str(_PROJECT_ROOT / "rego" / "gates"))
+    combined = CombinedGateEvaluator(threshold_eval, opa_eval)
+
+    context: dict[str, object] = {
+        "product": product,
+        "tier": tier.value,
+        "frameworks": profile.frameworks,
+        "findings_count": {
+            s: sum(1 for f in findings if f.severity == s)
+            for s in ["critical", "high", "medium", "low"]
+        },
+        "pci_scope_count": sum(
+            1 for f in findings if any(c.startswith("PCI-DSS") for c in f.control_ids)
+        ),
+        "secrets_count": sum(1 for f in findings if f.source == "gitleaks"),
+    }
+    gate = combined.evaluate(findings, tier, context)
 
     click.echo("[3/4] Gate evaluation")
     if gate.passed:
-        click.echo("      PASSED: all checks passed")
+        click.echo(f"      {gate.reason}")
     else:
         click.echo(f"      {gate.reason}")
 
@@ -324,7 +359,19 @@ def export_cmd(
     repo = ControlsRepository(baselines_dir=baselines, tier_mappings_path=mappings)
     repo.load_all()
 
-    exporter = EvidenceExporter(jsonl_reader=reader, controls_repo=repo)
+    # Optionally use DefectDojo as data source
+    dd_client = None
+    try:
+        dd_key = os.environ.get("DD_API_KEY", "")
+        if dd_key:
+            from orchestrator.integrations.defectdojo import DefectDojoClient
+
+            dd_url = os.environ.get("DEFECTDOJO_URL", "http://127.0.0.1:8080")
+            dd_client = DefectDojoClient(base_url=dd_url, api_key=dd_key)
+    except Exception:
+        pass
+
+    exporter = EvidenceExporter(jsonl_reader=reader, controls_repo=repo, defectdojo_client=dd_client)
     report = exporter.export(product=product, control_id=control_id, period=period, output_path=output)
 
     click.echo(f"Evidence report: {output}/{report['report_id']}.json")
@@ -440,6 +487,64 @@ def container_scan(
     for sev, count in sorted(severity_counts.items()):
         click.echo(f"  {sev}: {count}")
     click.echo(f"[container-scan] Findings logged to {jsonl_path}")
+
+
+@cli.command()
+@click.option("--product", required=True)
+@click.option("--defectdojo-url", default="http://127.0.0.1:8080")
+@click.option("--api-key", envvar="DD_API_KEY")
+@click.option("--jsonl-path", default=None)
+def sync(product: str, defectdojo_url: str, api_key: str | None, jsonl_path: str | None) -> None:
+    """Sync JSONL findings to DefectDojo."""
+    from orchestrator.integrations.defectdojo import DefectDojoClient
+
+    jpath = jsonl_path or _default_path("output/findings.jsonl")
+
+    if not api_key:
+        click.echo("Error: --api-key or DD_API_KEY required", err=True)
+        sys.exit(1)
+
+    client = DefectDojoClient(base_url=defectdojo_url, api_key=api_key)
+
+    if not client.health_check():
+        click.echo(f"Warning: DefectDojo not reachable at {defectdojo_url}. Skipping sync.", err=True)
+        click.echo("JSONL findings remain as backup (ADR-003).")
+        return
+
+    reader = JsonlWriter(jpath)
+    entries = reader.read_findings(product=product)
+
+    if not entries:
+        click.echo(f"No findings for product '{product}' in {jpath}")
+        return
+
+    # Convert JSONL entries back to Finding objects
+    findings: list[Finding] = []
+    for entry in entries:
+        data = entry.get("data", {})
+        findings.append(
+            Finding(
+                source=data.get("source", ""),
+                rule_id=data.get("rule_id", ""),
+                severity=data.get("severity", ""),
+                file=data.get("file", ""),
+                line=data.get("line", 0),
+                message=data.get("message", ""),
+                control_ids=data.get("control_ids", []),
+                product=data.get("product", ""),
+            )
+        )
+
+    product_id = client.get_or_create_product(product)
+    engagement_id = client.get_or_create_engagement(product_id, "pipeline-scan")
+    result = client.import_findings(engagement_id, findings)
+
+    stats = result.get("statistics", {})
+    click.echo(f"[sync] Synced {len(findings)} findings to DefectDojo")
+    click.echo(f"       Product: {product} (id={product_id})")
+    click.echo(f"       Created: {stats.get('created', 0)}, "
+               f"Closed: {stats.get('closed', 0)}, "
+               f"Reactivated: {stats.get('reactivated', 0)}")
 
 
 @cli.command()
