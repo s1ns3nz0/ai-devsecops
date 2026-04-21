@@ -24,7 +24,7 @@ def sample_manifest() -> ProductManifest:
 def sample_profile() -> RiskProfile:
     """Conservative risk profile fixture."""
     return RiskProfile(
-        frameworks=["pci-dss-4.0", "asvs-5.0-L3", "fisc-safety"],
+        frameworks=["pci-dss-4.0", "asvs-4.0.3-L3", "fisc-safety"],
         risk_appetite="conservative",
         thresholds={
             "critical": {"max_critical_findings": 0, "max_secrets_detected": 0, "action": "block"},

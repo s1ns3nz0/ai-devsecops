@@ -1,7 +1,0 @@
-# DEPRECATED: This file has been superseded by asvs-4.0.3-L3.yaml
-# which contains real OWASP ASVS 4.0.3 control IDs.
-# The "asvs-5.0-L3" framework label is retained in tier-mappings.yaml
-# for backward compatibility.
-#
-# This file is intentionally empty to avoid duplicate control IDs.
-controls: []

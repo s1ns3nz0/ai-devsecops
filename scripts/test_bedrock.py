@@ -62,7 +62,7 @@ def _build_sample_findings() -> list[Finding]:
             file="infra/s3.tf",
             line=3,
             message="S3 bucket without server-side encryption",
-            control_ids=["PCI-DSS-3.4", "FISC-DATA-03"],
+            control_ids=["PCI-DSS-3.5.1", "FISC-実119"],
             product="payment-api",
         ),
         Finding(
@@ -82,7 +82,7 @@ def _build_sample_findings() -> list[Finding]:
             file="infra/sg.tf",
             line=10,
             message="Security group allows ingress from 0.0.0.0/0",
-            control_ids=["PCI-DSS-1.3.4", "FISC-NET-01"],
+            control_ids=["PCI-DSS-1.3.1", "FISC-統20"],
             product="payment-api",
         ),
     ]

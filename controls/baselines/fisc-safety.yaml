@@ -124,7 +124,7 @@ controls:
       id: "FISC-実126"
       title: "生体認証の特性を考慮した安全対策を検討すること"
       framework: "fisc-safety"
-      description: "Consider the characteristics of biometric authentication and implement appropriate safety measures. This extends to ensuring authentication credentials are not stored in plaintext."
+      description: "Consider safety measures for biometric authentication characteristics. Extended scope: verify that authentication credentials (including biometric templates) are not stored in plaintext or exposed in source code. Partial coverage: detects hardcoded credentials, not biometric-specific controls."
       verification_methods:
         - scanner: gitleaks
         - scanner: semgrep

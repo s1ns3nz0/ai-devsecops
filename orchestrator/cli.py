@@ -104,7 +104,7 @@ def init(output_dir: str | None) -> None:
 
     profile = {
         "risk_profile": {
-            "frameworks": ["pci-dss-4.0"] if "PCI" in data_class.upper() else ["asvs-5.0-L3"],
+            "frameworks": ["pci-dss-4.0"] if "PCI" in data_class.upper() else ["asvs-4.0.3-L3"],
             "risk_appetite": "conservative" if tier in (RiskTier.CRITICAL, RiskTier.HIGH) else "moderate",
             "thresholds": {
                 "critical": {"max_critical_findings": 0, "max_secrets_detected": 0, "action": action},

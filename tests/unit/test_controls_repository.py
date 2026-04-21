@@ -53,7 +53,7 @@ class TestGetBaselineForTier:
         controls = repo.get_baseline_for_tier(RiskTier.HIGH)
         frameworks = {c.framework for c in controls}
         assert "pci-dss-4.0" in frameworks
-        assert "asvs-5.0-L3" in frameworks
+        assert "asvs-4.0.3-L3" in frameworks
         assert "fisc-safety" not in frameworks
 
     def test_low_tier_returns_empty(self, repo: ControlsRepository) -> None:
@@ -64,13 +64,13 @@ class TestGetBaselineForTier:
         controls = repo.get_baseline_for_tier(RiskTier.CRITICAL)
         frameworks = {c.framework for c in controls}
         assert "pci-dss-4.0" in frameworks
-        assert "asvs-5.0-L3" in frameworks
+        assert "asvs-4.0.3-L3" in frameworks
         assert "fisc-safety" in frameworks
 
     def test_medium_tier_selects_asvs_only(self, repo: ControlsRepository) -> None:
         controls = repo.get_baseline_for_tier(RiskTier.MEDIUM)
         frameworks = {c.framework for c in controls}
-        assert "asvs-5.0-L3" in frameworks
+        assert "asvs-4.0.3-L3" in frameworks
         assert "pci-dss-4.0" not in frameworks
 
 

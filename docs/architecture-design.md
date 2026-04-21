@@ -234,7 +234,7 @@ Never an AI inference.
 
 | Scanner | Category | Gate? | Control Examples |
 |---|---|---|---|
-| Checkov | IaC | Yes | PCI-DSS-1.3.4, FISC-DATA-03 |
+| Checkov | IaC | Yes | PCI-DSS-1.3.1, FISC-実119 |
 | Semgrep | SAST | Yes | PCI-DSS-6.3.1, ASVS-V5.3.4 |
 | Grype | SCA | Yes | PCI-DSS-6.3.1, ASVS-V14.2.1 |
 | Gitleaks | Secrets | Yes | PCI-DSS-3.5.1, ASVS-V2.10.1 |
@@ -256,7 +256,7 @@ Finding(
     source="checkov",
     rule_id="CKV_AWS_19",
     severity="high",
-    control_ids=["PCI-DSS-3.4", "FISC-DATA-03"],  # mapped from controls YAML
+    control_ids=["PCI-DSS-3.5.1", "FISC-実119"],  # mapped from controls YAML
     product="payment-api"
 )
 ```
@@ -280,7 +280,7 @@ Supported: field matching, `|contains`/`|startswith`/`|endswith` modifiers, AND/
 | Brute force login | T1110 | PCI-DSS-10.2.1 |
 | SQL injection attempt | T1190 | PCI-DSS-6.3.1, ASVS-V5.3.4 |
 | Data exfiltration | T1048 | PCI-DSS-10.2.1 |
-| Privilege escalation | T1078 | FISC-ACCESS-07 |
+| Privilege escalation | T1078 | FISC-実121 |
 
 Each rule is tagged with ATT&CK technique IDs and Control IDs, enabling coverage dashboards.
 

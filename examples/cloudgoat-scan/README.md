@@ -57,7 +57,7 @@ BLOCKED:
 | PCI-DSS-6.3.1 (vulnerabilities) | full | 69 | semgrep, grype |
 | PCI-DSS-6.3.2 (SBOM) | full | 8 | grype, sbom |
 | PCI-DSS-10.2.1 (audit logs) | full | 6 | sigma |
-| FISC-SAFETY-15 (monitoring) | full | 5 | sigma |
+| FISC-実127 (monitoring) | full | 5 | sigma |
 
 ## Files
 

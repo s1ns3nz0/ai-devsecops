@@ -4,16 +4,16 @@ tier_mappings:
     description: "No compliance requirements"
   medium:
     frameworks:
-      - asvs-5.0-L3
+      - asvs-4.0.3-L3
     description: "Application security baseline"
   high:
     frameworks:
       - pci-dss-4.0
-      - asvs-5.0-L3
+      - asvs-4.0.3-L3
     description: "Payment/financial data handling"
   critical:
     frameworks:
       - pci-dss-4.0
-      - asvs-5.0-L3
+      - asvs-4.0.3-L3
       - fisc-safety
     description: "Regulated financial services in Japan"

@@ -239,7 +239,7 @@ The gate decision is posted directly on the PR:
 
 | Control         | Status  | Findings | Scanners       |
 |-----------------|---------|----------|----------------|
-| 🟢 PCI-DSS-3.4 | full    |       19 | checkov        |
+| 🟢 PCI-DSS-3.5.1| full    |       19 | checkov        |
 | 🟢 PCI-DSS-6.3.1| full   |       67 | grype, semgrep |
 | 🔴 ASVS-V3.5.1 | none    |        0 | —              |
 

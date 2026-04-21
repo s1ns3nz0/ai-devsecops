@@ -157,8 +157,11 @@ controls:
       verification_methods:
         - scanner: checkov
           check_ids:
-            - "CKV_AWS_135"  # Ensure EC2 instance does not use default security group
-            - "CKV_AWS_23"   # Ensure security group rules have descriptions
+            - "CKV_AWS_2"    # Ensure ALB protocol is HTTPS
+            - "CKV_AWS_70"   # Ensure Sagemaker endpoint uses HTTPS
+        - scanner: semgrep
+          rules:
+            - "python.lang.security.audit.ssl.*"
       applicable_tiers: [high, critical]
       risk_tier_mapping:
         low: not-required
@@ -174,12 +177,13 @@ controls:
       id: "PCI-DSS-3.4.1"
       title: "PAN masked when displayed"
       framework: "pci-dss-4.0"
-      description: "PAN is masked when displayed such that only personnel with a legitimate business need can see more than the BIN and last four digits."
+      description: "PAN is masked when displayed such that only personnel with a legitimate business need can see more than the BIN and last four digits. Partial coverage: detects logging of sensitive data patterns."
       verification_methods:
         - scanner: semgrep
           rules:
-            - "python.lang.security.audit.formatted-sql-query.*"
             - "python.lang.security.audit.logging.*"
+            - "python.lang.security.audit.formatted-sql-query.*"
+            # Partial: detects PII in logs, not full PAN masking verification
       applicable_tiers: [high, critical]
       risk_tier_mapping:
         low: not-required
@@ -517,7 +521,11 @@ controls:
       verification_methods:
         - scanner: checkov
           check_ids:
-            - "CKV_AWS_145"  # Ensure encryption with KMS
+            - "CKV_AWS_273"  # Ensure access is through SSO/MFA
+            - "CKV_AWS_46"   # Ensure no IAM policies with admin privileges
+        - scanner: semgrep
+          rules:
+            - "python.lang.security.audit.hardcoded-password.*"
       applicable_tiers: [high, critical]
       risk_tier_mapping:
         low: not-required
@@ -534,9 +542,7 @@ controls:
         - scanner: semgrep
           rules:
             - "python.lang.security.audit.hardcoded-password.*"
-        - scanner: checkov
-          check_ids:
-            - "CKV_AWS_79"   # Ensure IMDSv2 is enabled
+            - "generic.secrets.security.detected-generic-password.*"
       applicable_tiers: [high, critical]
       risk_tier_mapping:
         low: not-required
@@ -712,11 +718,13 @@ controls:
       id: "PCI-DSS-10.5.1"
       title: "Retain audit log history for at least 12 months"
       framework: "pci-dss-4.0"
-      description: "Retain audit log history for at least 12 months, with at least the most recent three months immediately available for analysis."
+      description: "Retain audit log history for at least 12 months, with at least the most recent three months immediately available for analysis. Partial coverage: verifies logging is enabled, not retention period."
       verification_methods:
         - scanner: checkov
           check_ids:
             - "CKV_AWS_67"   # Ensure CloudTrail is enabled in all regions
+            - "CKV_AWS_35"   # Ensure CloudTrail logs are encrypted
+            # Partial: verifies logging enabled, not 12-month retention config
       applicable_tiers: [high, critical]
       risk_tier_mapping:
         low: not-required

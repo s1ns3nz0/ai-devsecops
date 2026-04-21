@@ -88,7 +88,7 @@ class ControlsRepository:
 
         if "PCI" in classifications or "PII-FINANCIAL" in classifications:
             applicable_frameworks.add("pci-dss-4.0")
-        applicable_frameworks.add("asvs-5.0-L3")
+        applicable_frameworks.add("asvs-4.0.3-L3")
 
         if "JP" in manifest.jurisdiction:
             applicable_frameworks.add("fisc-safety")
