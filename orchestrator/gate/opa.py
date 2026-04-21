@@ -122,14 +122,16 @@ class OpaEvaluator:
             Path(input_path).unlink(missing_ok=True)
 
         if result.returncode != 0:
-            logger.warning("OPA evaluation failed (exit %d): %s", result.returncode, result.stderr)
-            return []
+            error_msg = f"OPA evaluation error (exit {result.returncode}) — policy enforcement unavailable: {result.stderr[:200]}"
+            logger.error(error_msg)
+            return [error_msg]  # Fail-closed: broken OPA = deny
 
         try:
             output = json.loads(result.stdout)
         except json.JSONDecodeError:
-            logger.warning("OPA returned invalid JSON: %s", result.stdout[:200])
-            return []
+            error_msg = f"OPA returned invalid JSON — policy enforcement unavailable: {result.stdout[:100]}"
+            logger.error(error_msg)
+            return [error_msg]  # Fail-closed: garbled output = deny
 
         # Extract deny messages from OPA output
         deny_messages: list[str] = []

@@ -134,22 +134,50 @@ class DefectDojoClient:
         findings: list[Finding],
         scan_type: str = "Generic Findings Import",
     ) -> dict[str, Any]:
-        """Import findings to DefectDojo.
+        """Import findings to DefectDojo via /api/v2/import-scan/.
 
+        Uses multipart/form-data as required by DefectDojo's API.
+        The findings are serialized as a JSON file attachment.
         Idempotent: hash_code based dedup (DefectDojo built-in).
         Each finding's control_ids are added as tags.
         """
         dd_findings = [finding_to_defectdojo(f) for f in findings]
+        scan_data = json.dumps({"findings": dd_findings}).encode()
 
-        return self._request(
-            "POST",
-            "/import-scan/",
-            data={
-                "scan_type": scan_type,
-                "engagement": engagement_id,
-                "findings": dd_findings,
-            },
-        )
+        # Build multipart form data (DefectDojo requires file upload, not JSON body)
+        boundary = "----CompliancePlatformBoundary"
+        body_parts: list[bytes] = []
+
+        # Form fields
+        form_fields = {
+            "scan_type": scan_type,
+            "engagement": str(engagement_id),
+            "verified": "true",
+            "active": "true",
+        }
+        for key, value in form_fields.items():
+            body_parts.append(f"--{boundary}\r\n".encode())
+            body_parts.append(f'Content-Disposition: form-data; name="{key}"\r\n\r\n'.encode())
+            body_parts.append(f"{value}\r\n".encode())
+
+        # File field (the scan results as JSON file)
+        body_parts.append(f"--{boundary}\r\n".encode())
+        body_parts.append(b'Content-Disposition: form-data; name="file"; filename="findings.json"\r\n')
+        body_parts.append(b"Content-Type: application/json\r\n\r\n")
+        body_parts.append(scan_data)
+        body_parts.append(b"\r\n")
+        body_parts.append(f"--{boundary}--\r\n".encode())
+
+        body = b"".join(body_parts)
+
+        url = f"{self.base_url}/api/v2/import-scan/"
+        req = urllib.request.Request(url, data=body, method="POST")
+        req.add_header("Authorization", f"Token {self.api_key}")
+        req.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
+        req.add_header("Accept", "application/json")
+
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            return json.loads(resp.read().decode())  # type: ignore[no-any-return]
 
     def get_findings(
         self, product_name: str, tags: list[str] | None = None

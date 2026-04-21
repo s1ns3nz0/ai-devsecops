@@ -186,3 +186,46 @@ class TestOpaPassWhenNoDenials:
             decision = evaluator.evaluate(findings, context)
 
         assert decision.passed
+
+
+class TestOpaFailClosed:
+    """OPA errors should fail-closed (deny), not silently pass."""
+
+    def test_nonzero_exit_code_denies(self, tmp_path: Path) -> None:
+        """OPA crash/error → gate BLOCKED, not silently passed."""
+        policies_dir = tmp_path / "gates"
+        policies_dir.mkdir()
+        (policies_dir / "test.rego").write_text("package gates\ndeny[msg] { msg := \"test\" }")
+
+        evaluator = OpaEvaluator(str(policies_dir))
+        context: dict[str, object] = {"tier": "critical", "findings_count": {}, "secrets_count": 0}
+
+        mock_proc = MagicMock()
+        mock_proc.returncode = 1
+        mock_proc.stdout = ""
+        mock_proc.stderr = "rego parse error"
+
+        with patch("orchestrator.gate.opa.subprocess.run", return_value=mock_proc):
+            decision = evaluator.evaluate([], context)
+
+        assert not decision.passed
+        assert "OPA evaluation error" in decision.reason
+
+    def test_invalid_json_output_denies(self, tmp_path: Path) -> None:
+        """Garbled OPA output → gate BLOCKED, not silently passed."""
+        policies_dir = tmp_path / "gates"
+        policies_dir.mkdir()
+        (policies_dir / "test.rego").write_text("package gates\ndeny[msg] { msg := \"test\" }")
+
+        evaluator = OpaEvaluator(str(policies_dir))
+        context: dict[str, object] = {"tier": "critical", "findings_count": {}, "secrets_count": 0}
+
+        mock_proc = MagicMock()
+        mock_proc.returncode = 0
+        mock_proc.stdout = "not valid json {{{}"
+
+        with patch("orchestrator.gate.opa.subprocess.run", return_value=mock_proc):
+            decision = evaluator.evaluate([], context)
+
+        assert not decision.passed
+        assert "invalid JSON" in decision.reason
