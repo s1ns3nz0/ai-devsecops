@@ -2,12 +2,43 @@
   "project": "Compliance-Driven AI Risk Platform",
   "phase": "1-mvp-week1",
   "steps": [
-    { "step": 0, "name": "opa-engine", "status": "pending" },
-    { "step": 1, "name": "rego-policies", "status": "pending" },
-    { "step": 2, "name": "gate-integration", "status": "pending" },
-    { "step": 3, "name": "bedrock-live", "status": "pending" },
-    { "step": 4, "name": "defectdojo-compose", "status": "pending" },
-    { "step": 5, "name": "defectdojo-client", "status": "pending" },
-    { "step": 6, "name": "evidence-defectdojo", "status": "pending" }
-  ]
+    {
+      "step": 0,
+      "name": "opa-engine",
+      "status": "completed",
+      "started_at": "2026-04-21T12:27:14+0900",
+      "summary": "OpaEvaluator (orchestrator/gate/opa.py) — subprocess OPA CLI, graceful skip when not installed, 5 unit tests"
+    },
+    {
+      "step": 1,
+      "name": "rego-policies",
+      "status": "pending"
+    },
+    {
+      "step": 2,
+      "name": "gate-integration",
+      "status": "pending"
+    },
+    {
+      "step": 3,
+      "name": "bedrock-live",
+      "status": "pending"
+    },
+    {
+      "step": 4,
+      "name": "defectdojo-compose",
+      "status": "pending"
+    },
+    {
+      "step": 5,
+      "name": "defectdojo-client",
+      "status": "pending"
+    },
+    {
+      "step": 6,
+      "name": "evidence-defectdojo",
+      "status": "pending"
+    }
+  ],
+  "created_at": "2026-04-21T12:27:14+0900"
 }
