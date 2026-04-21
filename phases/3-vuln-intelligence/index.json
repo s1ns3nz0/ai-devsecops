@@ -7,7 +7,8 @@
       "name": "epss-client",
       "status": "completed",
       "started_at": "2026-04-22T07:55:56+0900",
-      "summary": "EpssClient with batch API lookup, offline fallback, and 10 unit tests (207 total pass)"
+      "summary": "EpssClient with batch API lookup, offline fallback, and 10 unit tests (207 total pass)",
+      "completed_at": "2026-04-22T08:16:23+0900"
     },
     {
       "step": 1,
