@@ -247,7 +247,7 @@ Coverage: 69.2%
 ## Testing
 
 ```bash
-make test            # 124 unit tests (<1s)
+make test            # 165+ unit tests (<1s)
 make test-contract   # contract tests (recorded API responses)
 make lint            # ruff + mypy strict mode
 ```

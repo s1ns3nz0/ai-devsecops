@@ -3,8 +3,8 @@
 ## 기술 스택
 - Python 3.11+ (orchestrator, CLI, all integrations)
 - YAML + JSON Schema (controls repository, configuration)
-- OPA/Rego (policy evaluation — MVP tier only)
-- Docker Compose (DefectDojo, Dependency-Track — MVP tier only)
+- OPA/Rego (policy evaluation — 4 policies implemented)
+- Docker Compose (DefectDojo — implemented; Dependency-Track — planned)
 - AWS Bedrock (Claude Sonnet 4.6 — optional, platform works without it)
 
 ## 아키텍처 규칙
