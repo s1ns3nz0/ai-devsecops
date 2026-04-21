@@ -7,7 +7,8 @@
       "name": "retry-engine",
       "status": "completed",
       "started_at": "2026-04-22T00:10:56+0900",
-      "summary": "RetryEngine with fixed backoff [10s,30s,60s], 120s cap, 3 max attempts; ScannerRunner updated with optional retry_config (backward-compatible)"
+      "summary": "RetryEngine with fixed backoff [10s,30s,60s], 120s cap, 3 max attempts; ScannerRunner updated with optional retry_config (backward-compatible)",
+      "completed_at": "2026-04-22T00:18:03+0900"
     },
     {
       "step": 1,
