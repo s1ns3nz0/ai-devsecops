@@ -156,7 +156,7 @@ When `DD_API_KEY` is set:
 | **Risk Assessment** | StaticRiskAssessor + BedrockRiskAssessor (Strategy pattern) | ~400 |
 | **Evidence Export** | JSONL append-only writer + JSON evidence report generator | ~260 |
 | **Sigma Engine** | Custom Python Sigma matcher (144 LOC), 4 detection rules with ATT&CK tags | ~190 |
-| **CLI** | `init`, `scan`, `assess`, `detect`, `export`, `demo` | ~370 |
+| **CLI** | `init`, `scan`, `assess`, `detect`, `export`, `demo`, `sbom`, `container-scan`, `sync` | ~550 |
 
 ## Compliance Frameworks
 
@@ -249,7 +249,7 @@ Coverage: 69.2%
 ## Testing
 
 ```bash
-make test            # 165+ unit tests (<1s)
+make test            # 170+ unit tests (<1s)
 make test-contract   # contract tests (recorded API responses)
 make lint            # ruff + mypy strict mode
 ```

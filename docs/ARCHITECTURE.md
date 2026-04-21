@@ -76,7 +76,7 @@ compliance-ai-risk-platform/
 │   └── architecture-design.md        # Full design document
 ├── controls/                          ← OSCAL YAML (핵심 폴더)
 │   ├── baselines/
-│   │   ├── pci-dss-4.0.yaml          # 5 controls (Sec 1, 3, 6, 10)
+│   │   ├── pci-dss-4.0.yaml          # 6 controls (Sec 1, 3, 6, 10)
 │   │   ├── asvs-5.0-L3.yaml          # 4 controls (V2, V3, V5, V14)
 │   │   └── fisc-safety.yaml          # 3 controls
 │   ├── products/

@@ -322,7 +322,7 @@ Product manifest declares: PCI data, PII-financial, Japan jurisdiction.
 Risk tier: CRITICAL.
 
 **Step 2 — Baseline Selection (RMF Step 3)**
-12 controls auto-selected: PCI-DSS (5) + ASVS (4) + FISC (3).
+13 controls auto-selected: PCI-DSS (6) + ASVS (4) + FISC (3).
 
 **Step 3 — Scanning (RMF Step 5)**
 Checkov: 20 IaC findings. Grype: 20 dependency CVEs. Gitleaks: 1 hardcoded key.
@@ -374,7 +374,7 @@ Sigma rules match 5 attack patterns in application logs.
 | Contract | API response parsing | Recorded responses, no live services |
 | E2E | Full demo flow | `make demo` with real or fixture data |
 
-166+ unit tests. mypy strict mode. ruff linting.
+170+ unit tests. mypy strict mode. ruff linting.
 
 ---
 

@@ -21,7 +21,7 @@
 
 ### MVP-0 (먼저 구현, ~2,000 LOC)
 1. **Risk Assessment Engine** — 제품 카테고리화 + 리스크 스코어링 (RMF Step 2, 5)
-2. **Controls Repository** — OSCAL YAML 기반 컨트롤 카탈로그, tier별 baseline 자동 선택 (~30 controls)
+2. **Controls Repository** — OSCAL YAML 기반 컨트롤 카탈로그, tier별 baseline 자동 선택 (13 controls: PCI-DSS 6, ASVS 4, FISC 3)
 3. **IaC Policy Gate** — Checkov 스캔 + YAML threshold gate
 4. **SAST Integration** — Semgrep 스캔, Control ID 태깅
 5. **SCA Integration** — Grype 로컬 스캔, SBOM 기반 취약점 분석
