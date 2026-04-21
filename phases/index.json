@@ -12,7 +12,8 @@
     },
     {
       "dir": "2-failure-policy",
-      "status": "pending"
+      "status": "completed",
+      "completed_at": "2026-04-22T00:32:48+0900"
     }
   ]
 }
