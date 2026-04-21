@@ -16,7 +16,7 @@
       "status": "completed",
       "started_at": "2026-04-22T00:18:03+0900",
       "summary": "FailureHandler with tier-based deterministic policy: critical/high block on scan failure (override available), medium/low warn_and_proceed; 8 unit tests",
-      "completed_at": "2026-04-22T00:30:00+0900"
+      "completed_at": "2026-04-22T00:20:22+0900"
     },
     {
       "step": 2,
