@@ -13,7 +13,10 @@
     {
       "step": 1,
       "name": "rego-policies",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-04-21T12:30:34+0900",
+      "completed_at": "2026-04-21T13:00:00+0900",
+      "summary": "4 Rego policies (PCI critical, secrets, high-severity threshold, IaC network segmentation) + 6 tests (3 structural + 3 OPA integration w/ skip)"
     },
     {
       "step": 2,
