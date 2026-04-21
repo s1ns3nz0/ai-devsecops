@@ -77,7 +77,7 @@ def sample_findings() -> list[Finding]:
             file="src/config.py",
             line=10,
             message="AWS access key detected",
-            control_ids=["PCI-DSS-3.4"],
+            control_ids=["PCI-DSS-3.5.1"],
             product="payment-api",
         ),
         Finding(
@@ -87,7 +87,7 @@ def sample_findings() -> list[Finding]:
             file="terraform/s3.tf",
             line=5,
             message="S3 bucket without encryption",
-            control_ids=["PCI-DSS-3.4"],
+            control_ids=["PCI-DSS-3.5.1"],
             product="payment-api",
         ),
         Finding(

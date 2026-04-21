@@ -127,8 +127,8 @@ class TestCheckovFindingHasControlIds:
         findings = scanner.parse_output(raw)
 
         by_rule = {f.rule_id: f for f in findings}
-        assert "PCI-DSS-3.4" in by_rule["CKV_AWS_19"].control_ids
-        assert "FISC-DATA-03" in by_rule["CKV_AWS_19"].control_ids
+        assert "PCI-DSS-3.5.1" in by_rule["CKV_AWS_19"].control_ids
+        assert "FISC-実119" in by_rule["CKV_AWS_19"].control_ids
 
 
 class TestSemgrepParseOutput:
@@ -236,7 +236,7 @@ class TestGitleaksParseOutput:
         findings = scanner.parse_output(raw)
 
         for f in findings:
-            assert "PCI-DSS-3.5.1" in f.control_ids
+            assert "PCI-DSS-3.6.1" in f.control_ids
             assert "ASVS-V2.10.1" in f.control_ids
 
 

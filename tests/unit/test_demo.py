@@ -23,7 +23,7 @@ def demo_findings() -> list[Finding]:
             file="/main.tf",
             line=11,
             message="Ensure the S3 bucket has server-side-encryption enabled",
-            control_ids=["PCI-DSS-3.4"],
+            control_ids=["PCI-DSS-3.5.1"],
             product="",
         ),
         Finding(
@@ -33,7 +33,7 @@ def demo_findings() -> list[Finding]:
             file="/main.tf",
             line=40,
             message="Ensure no security group allows ingress from 0.0.0.0/0 to port 22",
-            control_ids=["PCI-DSS-1.3.4"],
+            control_ids=["PCI-DSS-1.3.1"],
             product="",
         ),
         Finding(
@@ -63,7 +63,7 @@ def demo_findings() -> list[Finding]:
             file="src/config.py",
             line=8,
             message="AWS Access Key",
-            control_ids=["PCI-DSS-3.4"],
+            control_ids=["PCI-DSS-3.5.1"],
             product="",
         ),
     ]

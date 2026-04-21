@@ -28,12 +28,12 @@ def mapper(controls_repo: ControlsRepository) -> ControlMapper:
 class TestMapKnownRule:
     def test_checkov_ckv_aws_19_maps_to_pci_and_fisc(self, mapper: ControlMapper) -> None:
         control_ids = mapper.map_finding("checkov", "CKV_AWS_19")
-        assert "PCI-DSS-3.4" in control_ids
-        assert "FISC-DATA-03" in control_ids
+        assert "PCI-DSS-3.5.1" in control_ids
+        assert "FISC-実119" in control_ids
 
     def test_checkov_ckv_aws_24_maps_to_pci(self, mapper: ControlMapper) -> None:
         control_ids = mapper.map_finding("checkov", "CKV_AWS_24")
-        assert "PCI-DSS-1.3.4" in control_ids
+        assert "PCI-DSS-1.3.1" in control_ids
 
     def test_semgrep_sql_injection_maps_to_pci_and_asvs(self, mapper: ControlMapper) -> None:
         control_ids = mapper.map_finding("semgrep", "python.lang.security.injection.sql-injection")
@@ -48,7 +48,7 @@ class TestMapKnownRule:
 
     def test_gitleaks_maps_to_pci_and_asvs(self, mapper: ControlMapper) -> None:
         control_ids = mapper.map_finding("gitleaks", "aws-access-key-id")
-        assert "PCI-DSS-3.5.1" in control_ids
+        assert "PCI-DSS-3.6.1" in control_ids
         assert "ASVS-V2.10.1" in control_ids
 
     def test_grype_critical_maps_to_pci_and_asvs(self, mapper: ControlMapper) -> None:

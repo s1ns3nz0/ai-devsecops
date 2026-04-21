@@ -16,4 +16,4 @@ tags:
   - attack.t1078
   - attack.privilege_escalation
 control_ids:
-  - FISC-ACCESS-07
+  - FISC-実121

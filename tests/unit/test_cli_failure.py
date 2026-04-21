@@ -30,7 +30,7 @@ def cli_findings() -> list[Finding]:
             file="main.tf",
             line=10,
             message="S3 bucket without encryption",
-            control_ids=["PCI-DSS-3.4"],
+            control_ids=["PCI-DSS-3.5.1"],
             product="payment-api",
         ),
     ]
