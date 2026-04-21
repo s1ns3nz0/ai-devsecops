@@ -130,14 +130,33 @@ def run_demo(target_path: str, product: str = "payment-api") -> None:
     except Exception:
         click.echo("      SBOM generation skipped (syft not installed or error)")
 
-    # ── [5/8] Gate evaluation ───────────────────────────────────
+    # ── [5/8] Gate evaluation — two additive layers (YAML + OPA) ──
     click.echo("\n[5/8] Gate evaluation (RMF Step 6: Authorize)")
-    evaluator = ThresholdEvaluator(profile)
-    gate = evaluator.evaluate(findings, tier)
+    from orchestrator.gate.combined import CombinedGateEvaluator
+    from orchestrator.gate.opa import OpaEvaluator
+
+    threshold_eval = ThresholdEvaluator(profile)
+    opa_eval = OpaEvaluator(str(_PROJECT_ROOT / "rego" / "gates"))
+    combined = CombinedGateEvaluator(threshold_eval, opa_eval)
+
+    context: dict[str, object] = {
+        "product": product,
+        "tier": tier.value,
+        "frameworks": profile.frameworks,
+        "findings_count": {
+            s: sum(1 for f in findings if f.severity == s)
+            for s in ["critical", "high", "medium", "low"]
+        },
+        "pci_scope_count": sum(
+            1 for f in findings if any(c.startswith("PCI-DSS") for c in f.control_ids)
+        ),
+        "secrets_count": sum(1 for f in findings if f.source == "gitleaks"),
+    }
+    gate = combined.evaluate(findings, tier, context)
     writer.write_gate_decision(gate, product)
 
     if gate.passed:
-        click.echo("      PASSED — all checks within thresholds")
+        click.echo(f"      {gate.reason}")
     else:
         click.echo(f"      {gate.reason}")
 

@@ -21,7 +21,10 @@
     {
       "step": 2,
       "name": "gate-integration",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-04-21T12:32:33+0900",
+      "completed_at": "2026-04-21T13:15:00+0900",
+      "summary": "CombinedGateEvaluator (YAML+OPA two-layer gate) + CLI/demo integration + 5 unit tests"
     },
     {
       "step": 3,

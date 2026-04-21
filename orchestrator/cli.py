@@ -257,13 +257,32 @@ def assess(
     writer = JsonlWriter(jsonl_path)
     writer.write_findings(findings)
 
-    # [3/4] Gate evaluation
-    evaluator = ThresholdEvaluator(profile)
-    gate = evaluator.evaluate(findings, tier)
+    # [3/4] Gate evaluation — two additive layers (YAML + OPA)
+    from orchestrator.gate.combined import CombinedGateEvaluator
+    from orchestrator.gate.opa import OpaEvaluator
+
+    threshold_eval = ThresholdEvaluator(profile)
+    opa_eval = OpaEvaluator(str(_PROJECT_ROOT / "rego" / "gates"))
+    combined = CombinedGateEvaluator(threshold_eval, opa_eval)
+
+    context: dict[str, object] = {
+        "product": product,
+        "tier": tier.value,
+        "frameworks": profile.frameworks,
+        "findings_count": {
+            s: sum(1 for f in findings if f.severity == s)
+            for s in ["critical", "high", "medium", "low"]
+        },
+        "pci_scope_count": sum(
+            1 for f in findings if any(c.startswith("PCI-DSS") for c in f.control_ids)
+        ),
+        "secrets_count": sum(1 for f in findings if f.source == "gitleaks"),
+    }
+    gate = combined.evaluate(findings, tier, context)
 
     click.echo("[3/4] Gate evaluation")
     if gate.passed:
-        click.echo("      PASSED: all checks passed")
+        click.echo(f"      {gate.reason}")
     else:
         click.echo(f"      {gate.reason}")
 
