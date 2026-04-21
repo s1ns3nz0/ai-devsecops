@@ -47,6 +47,10 @@ class Finding:
     message: str
     control_ids: list[str]
     product: str
+    # SCA-specific fields (populated by Grype, empty for other scanners)
+    package: str = ""
+    installed_version: str = ""
+    fixed_version: str = ""
 
 
 @dataclass

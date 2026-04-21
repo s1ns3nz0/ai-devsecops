@@ -34,7 +34,7 @@ class ThreatScenario:
     actor: str                   # TA-001 reference
     attack_vector: str           # STRIDE category: S/T/R/I/D/E
     mitre_technique: str         # ATT&CK: T1190, T1078, etc.
-    target_component: str        # 실제 컴포넌트: "PyJWT 1.7.1" or "src/app.py:login"
+    target_component: str        # SBOM component: "PyJWT 1.7.1" (static mode uses package names only; source-level mapping reserved for AI mode)
     preconditions: list[str]     # ["Network access to API", "Knowledge of HS256 usage"]
     attack_steps: list[str]      # ["Intercept JWT", "Exploit HS256 confusion", "Forge admin token"]
     impact: str                  # "Full access to payment processing"
@@ -99,7 +99,10 @@ class StaticThreatModelGenerator:
         1. SBOM 컴포넌트에서 카테고리 추출 (web framework, crypto, DB, etc.)
         2. Enriched CVEs에서 실제 위협 시나리오 도출
         3. Product manifest에서 공격 표면 분석
-        4. Controls gap 계산
+        4. Controls gap 계산:
+           - controls_required = union of affected_controls from all scenarios
+           - controls_covered = union of control_ids from all enriched_vulns findings
+           - controls_gap = controls_required - controls_covered
         """
         ...
 
@@ -119,7 +122,17 @@ class StaticThreatModelGenerator:
 
     def _map_to_mitre(self, vuln: EnrichedVulnerability) -> str:
         """CVE 타입 → MITRE ATT&CK technique 매핑.
-        예: SQL injection → T1190, credential theft → T1078
+
+        Package category → ATT&CK technique (hardcoded mapping):
+        - JWT/auth libraries (pyjwt, python-jose, authlib) → T1078 (Valid Accounts)
+        - Crypto libraries (cryptography, pycryptodome) → T1557 (Adversary-in-the-Middle)
+        - Web frameworks (django, flask, fastapi) → T1190 (Exploit Public-Facing App)
+        - HTTP clients (requests, urllib3, httpx) → T1071 (Application Layer Protocol)
+        - DB drivers (psycopg2, sqlalchemy, pymongo) → T1190 (Exploit Public-Facing App)
+        - Serialization (pickle, pyyaml, lxml) → T1059 (Command and Scripting)
+        - Default/unknown → T1190
+
+        Package name is matched against these categories via substring.
         """
         ...
 ```

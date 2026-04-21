@@ -60,10 +60,13 @@ class VulnerabilityEnricher:
         Enrich Grype findings with exploit intelligence.
 
         Priority scoring:
-        - CRITICAL: EPSS > 0.5 OR (CVSS critical AND PCI scope)
-        - HIGH: EPSS > 0.1 OR CVSS high
-        - MEDIUM: EPSS > 0.01
-        - LOW: EPSS <= 0.01 or unavailable
+        - When EPSS available:
+          - CRITICAL: EPSS > 0.5 OR (CVSS critical AND PCI scope)
+          - HIGH: EPSS > 0.1 OR CVSS high
+          - MEDIUM: EPSS > 0.01
+          - LOW: EPSS <= 0.01
+        - When EPSS unavailable: fall back to CVSS severity directly
+          (critical stays critical, high stays high — don't downgrade)
         """
         ...
 

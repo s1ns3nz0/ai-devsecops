@@ -107,12 +107,24 @@ class GrypeScanner:
 
             artifact = match.get("artifact", {})
             file_path = ""
+            pkg_name = ""
+            pkg_version = ""
             if isinstance(artifact, dict):
+                pkg_name = str(artifact.get("name", ""))
+                pkg_version = str(artifact.get("version", ""))
                 locations = artifact.get("locations", [])
                 if isinstance(locations, list) and locations:
                     loc = locations[0]
                     if isinstance(loc, dict):
                         file_path = str(loc.get("path", ""))
+
+            # Extract fixed version
+            fix_versions = vuln.get("fix", {})
+            fixed_version = ""
+            if isinstance(fix_versions, dict):
+                versions = fix_versions.get("versions", [])
+                if isinstance(versions, list) and versions:
+                    fixed_version = str(versions[0])
 
             control_ids = self._control_mapper.map_finding("grype", vuln_id, severity=severity)
 
@@ -126,6 +138,9 @@ class GrypeScanner:
                     message=str(vuln.get("description", "")),
                     control_ids=control_ids,
                     product="",
+                    package=pkg_name,
+                    installed_version=pkg_version,
+                    fixed_version=fixed_version,
                 )
             )
 
