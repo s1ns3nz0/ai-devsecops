@@ -1,0 +1,10 @@
+{
+  "project": "Compliance-Driven AI Risk Platform",
+  "phase": "2-failure-policy",
+  "steps": [
+    { "step": 0, "name": "retry-engine", "status": "pending" },
+    { "step": 1, "name": "failure-handler", "status": "pending" },
+    { "step": 2, "name": "override-mechanism", "status": "pending" },
+    { "step": 3, "name": "cli-integration", "status": "pending" }
+  ]
+}
