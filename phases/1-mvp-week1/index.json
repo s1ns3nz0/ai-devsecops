@@ -7,7 +7,8 @@
       "name": "opa-engine",
       "status": "completed",
       "started_at": "2026-04-21T12:27:14+0900",
-      "summary": "OpaEvaluator (orchestrator/gate/opa.py) — subprocess OPA CLI, graceful skip when not installed, 5 unit tests"
+      "summary": "OpaEvaluator (orchestrator/gate/opa.py) — subprocess OPA CLI, graceful skip when not installed, 5 unit tests",
+      "completed_at": "2026-04-21T12:30:34+0900"
     },
     {
       "step": 1,
