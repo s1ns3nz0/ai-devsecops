@@ -207,10 +207,37 @@ class DefectDojoClient:
         test_id = self.get_or_create_test(engagement_id)
         test_type_id = self._ensure_test_type()
 
+        # Pre-fetch existing finding titles for idempotent import
+        # Query by engagement (covers all tests) to avoid cross-test duplicates
+        existing_titles: set[str] = set()
+        try:
+            offset = 0
+            while True:
+                existing = self._request(
+                    "GET", "/findings/",
+                    params={"test__engagement": str(engagement_id), "limit": "500", "offset": str(offset)},
+                )
+                results = existing.get("results", [])
+                for f in results:
+                    if f.get("title"):
+                        existing_titles.add(f["title"].lower())
+                if len(results) < 500:
+                    break
+                offset += 500
+        except urllib.error.HTTPError:
+            pass  # If query fails, proceed without dedup (worst case: duplicates)
+
         created = 0
+        skipped = 0
         errors = 0
         for finding in findings:
             dd = finding_to_defectdojo(finding)
+
+            # Idempotent: skip if title already exists (case-insensitive, DD may capitalize)
+            if dd["title"].lower() in existing_titles:
+                skipped += 1
+                continue
+
             dd["test"] = test_id
             dd["found_by"] = [test_type_id]
             dd["active"] = True
@@ -225,11 +252,12 @@ class DefectDojoClient:
             try:
                 self._request("POST", "/findings/", data=dd)
                 created += 1
+                existing_titles.add(dd["title"].lower())
             except urllib.error.HTTPError:
                 errors += 1
 
-        logger.info("DefectDojo import: %d created, %d errors", created, errors)
-        return {"created": created, "errors": errors}
+        logger.info("DefectDojo import: %d created, %d skipped, %d errors", created, skipped, errors)
+        return {"created": created, "skipped": skipped, "errors": errors}
 
     def get_findings(
         self, product_name: str, tags: list[str] | None = None

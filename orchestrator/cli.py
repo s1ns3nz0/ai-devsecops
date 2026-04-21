@@ -541,7 +541,7 @@ def sync(product: str, defectdojo_url: str, api_key: str | None, jsonl_path: str
 
     click.echo(f"[sync] Synced {len(findings)} findings to DefectDojo")
     click.echo(f"       Product: {product} (id={product_id})")
-    click.echo(f"       Created: {result['created']}, Errors: {result['errors']}")
+    click.echo(f"       Created: {result['created']}, Skipped: {result['skipped']}, Errors: {result['errors']}")
 
 
 @cli.command()

@@ -17,7 +17,9 @@ Real scan results from running the platform against [CloudGoat](https://github.c
 | Semgrep (SAST) | 318 | 111 high, 192 medium, 15 low |
 | Gitleaks (secrets) | 17 | 17 critical (hardcoded credentials) |
 | Grype (SCA) | 12 | 7 high, 4 medium, 1 low |
-| **Total** | **347** | |
+| Sigma (detection) | 9 | 8 high, 1 critical |
+| SBOM (supply chain) | 1 | 1 info |
+| **Total** | **357** | |
 
 ### SBOM
 

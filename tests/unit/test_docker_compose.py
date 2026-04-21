@@ -47,6 +47,20 @@ def test_postgres_has_persistent_volume() -> None:
     assert "defectdojo-postgres-data" in top_volumes
 
 
+def test_defectdojo_images_have_platform() -> None:
+    """DefectDojo images must specify platform: linux/amd64 for ARM compatibility."""
+    data = yaml.safe_load(COMPOSE_PATH.read_text())
+    dd_services = [
+        name for name, svc in data["services"].items()
+        if "defectdojo" in svc.get("image", "") or name == "uwsgi"
+    ]
+    for name in dd_services:
+        svc = data["services"][name]
+        assert svc.get("platform") == "linux/amd64", (
+            f"Service {name} missing platform: linux/amd64 (required for Apple Silicon)"
+        )
+
+
 def test_ports_bind_to_localhost() -> None:
     """Exposed ports must bind to 127.0.0.1, never 0.0.0.0."""
     data = yaml.safe_load(COMPOSE_PATH.read_text())
