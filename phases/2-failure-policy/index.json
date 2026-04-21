@@ -21,7 +21,10 @@
     {
       "step": 2,
       "name": "override-mechanism",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-04-22T00:20:22+0900",
+      "summary": "OverrideManager with JSONL audit trail, OVR-YYYY-MMDD-NNN ID format, predefined reasons, SLA deadline, pending override query; 6 unit tests",
+      "completed_at": "2026-04-22T01:05:00+0900"
     },
     {
       "step": 3,
