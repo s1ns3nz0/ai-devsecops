@@ -45,7 +45,10 @@
     {
       "step": 5,
       "name": "defectdojo-client",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-04-21T12:42:40+0900",
+      "completed_at": "2026-04-21T13:00:00+0900",
+      "summary": "DefectDojoClient (orchestrator/integrations/defectdojo.py) — urllib-based REST client, finding_to_defectdojo converter with hash dedup + control_id tags, CLI sync command, 4 unit + 4 contract tests"
     },
     {
       "step": 6,
