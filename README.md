@@ -221,6 +221,8 @@ One Control ID traces from framework requirement to scanner finding to evidence 
 
 ## CI/CD Security Gate
 
+> **Live example:** [PR #3](https://github.com/s1ns3nz0/ai-devsecops/pull/3) — security gate blocked a PR with critical findings. See the bot comment for the full evidence table.
+
 Every PR triggers an automated security assessment:
 
 1. All scanners run against the codebase (Checkov, Semgrep, Grype, Gitleaks)
