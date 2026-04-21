@@ -59,5 +59,6 @@
       "summary": "EvidenceExporter extended with DefectDojo as preferred data source (JSONL fallback), assess command auto-syncs to DD, demo shows DD status, 3 unit tests"
     }
   ],
-  "created_at": "2026-04-21T12:27:14+0900"
+  "created_at": "2026-04-21T12:27:14+0900",
+  "completed_at": "2026-04-21T12:51:46+0900"
 }
