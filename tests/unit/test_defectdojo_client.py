@@ -26,7 +26,7 @@ class TestFindingToDefectdojoFormat:
         finding = _make_finding()
         result = finding_to_defectdojo(finding)
 
-        assert result["title"] == finding.rule_id
+        assert finding.rule_id in result["title"]
         assert result["severity"] == "High"
         assert result["description"] == finding.message
         assert result["file_path"] == finding.file

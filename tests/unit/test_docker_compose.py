@@ -7,7 +7,7 @@ import yaml
 COMPOSE_PATH = Path(__file__).parent.parent.parent / "docker-compose.yml"
 
 REQUIRED_SERVICES = {
-    "defectdojo-django",
+    "uwsgi",
     "defectdojo-nginx",
     "defectdojo-celery-beat",
     "defectdojo-celery-worker",

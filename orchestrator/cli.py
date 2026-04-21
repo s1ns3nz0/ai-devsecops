@@ -539,12 +539,9 @@ def sync(product: str, defectdojo_url: str, api_key: str | None, jsonl_path: str
     engagement_id = client.get_or_create_engagement(product_id, "pipeline-scan")
     result = client.import_findings(engagement_id, findings)
 
-    stats = result.get("statistics", {})
     click.echo(f"[sync] Synced {len(findings)} findings to DefectDojo")
     click.echo(f"       Product: {product} (id={product_id})")
-    click.echo(f"       Created: {stats.get('created', 0)}, "
-               f"Closed: {stats.get('closed', 0)}, "
-               f"Reactivated: {stats.get('reactivated', 0)}")
+    click.echo(f"       Created: {result['created']}, Errors: {result['errors']}")
 
 
 @cli.command()
