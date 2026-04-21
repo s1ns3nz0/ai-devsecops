@@ -5,11 +5,14 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from orchestrator.controls.models import Control
 from orchestrator.controls.repository import ControlsRepository
 from orchestrator.evidence.jsonl import JsonlWriter
+
+if TYPE_CHECKING:
+    from orchestrator.integrations.defectdojo import DefectDojoClient
 
 
 class EvidenceExporter:
@@ -17,14 +20,24 @@ class EvidenceExporter:
 
     Generates audit-ready reports from JSONL + Controls Repository.
 
+    Data source priority:
+    1. DefectDojo (if available) — source of truth
+    2. JSONL (fallback) — always available
+
     - Evidence is a generated artifact, not a DB (ADR-008).
     - Control ID is the primary key across the entire platform.
     - MVP-0: JSON format only.
     """
 
-    def __init__(self, jsonl_reader: JsonlWriter, controls_repo: ControlsRepository) -> None:
+    def __init__(
+        self,
+        jsonl_reader: JsonlWriter,
+        controls_repo: ControlsRepository,
+        defectdojo_client: DefectDojoClient | None = None,
+    ) -> None:
         self._jsonl = jsonl_reader
         self._controls = controls_repo
+        self._dd = defectdojo_client
 
     def export(
         self,
@@ -47,8 +60,8 @@ class EvidenceExporter:
         else:
             controls_map = dict(self._controls.controls)
 
-        # Read all findings for this product
-        all_findings = self._jsonl.read_findings(product=product)
+        # Read findings: prefer DefectDojo, fallback to JSONL
+        all_findings, data_source = self._load_findings(product, control_id)
 
         # Build per-control evidence
         control_entries: list[dict[str, Any]] = []
@@ -76,6 +89,7 @@ class EvidenceExporter:
                     "findings": [f["data"] for f in ctrl_findings],
                     "scanners_used": scanners_used,
                     "last_scan": last_scan,
+                    "data_source": data_source,
                     "risk_assessments": [],
                 },
             }
@@ -156,6 +170,46 @@ class EvidenceExporter:
             json.dump(report, f, indent=2, ensure_ascii=False)
 
         return report
+
+    def _load_findings(
+        self, product: str, control_id: str | None = None
+    ) -> tuple[list[dict[str, Any]], str]:
+        """Load findings from DefectDojo (preferred) or JSONL (fallback).
+
+        Returns (findings_list, data_source_name).
+        """
+        if self._dd is not None:
+            try:
+                if self._dd.health_check():
+                    tags = [control_id] if control_id else None
+                    dd_findings = self._dd.get_findings(product, tags=tags)
+                    return (
+                        [self._dd_finding_to_jsonl_entry(f) for f in dd_findings],
+                        "defectdojo",
+                    )
+            except Exception:
+                pass  # DefectDojo error → fallback to JSONL
+
+        return self._jsonl.read_findings(product=product, control_id=control_id), "jsonl"
+
+    @staticmethod
+    def _dd_finding_to_jsonl_entry(dd_finding: dict[str, Any]) -> dict[str, Any]:
+        """Convert a DefectDojo finding dict to JSONL-compatible entry format."""
+        severity_map = {"Critical": "critical", "High": "high", "Medium": "medium", "Low": "low", "Info": "info"}
+        return {
+            "type": "finding",
+            "timestamp": dd_finding.get("created", ""),
+            "data": {
+                "source": "defectdojo",
+                "rule_id": dd_finding.get("title", ""),
+                "severity": severity_map.get(dd_finding.get("severity", ""), "info"),
+                "file": dd_finding.get("file_path", ""),
+                "line": dd_finding.get("line", 0),
+                "message": dd_finding.get("description", ""),
+                "control_ids": dd_finding.get("tags", []),
+                "product": "",
+            },
+        }
 
     def _determine_control_status(self, control: Control, findings: list[dict[str, Any]]) -> str:
         """Determine evidence status for a control.

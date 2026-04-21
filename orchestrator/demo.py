@@ -220,12 +220,38 @@ def run_demo(target_path: str, product: str = "payment-api") -> None:
 
     # ── [8/8] Evidence export ───────────────────────────────────
     click.echo("\n[8/8] Evidence export")
-    exporter = EvidenceExporter(jsonl_reader=writer, controls_repo=repo)
+
+    # Evidence path: optionally sync to DefectDojo
+    dd_client = None
+    dd_status = "skipped (not configured)"
+    try:
+        dd_key = os.environ.get("DD_API_KEY", "")
+        if dd_key:
+            from orchestrator.integrations.defectdojo import DefectDojoClient
+
+            dd_url = os.environ.get("DEFECTDOJO_URL", "http://127.0.0.1:8080")
+            dd = DefectDojoClient(base_url=dd_url, api_key=dd_key)
+            if dd.health_check():
+                product_id = dd.get_or_create_product(product)
+                engagement_id = dd.get_or_create_engagement(product_id, "demo-scan")
+                dd.import_findings(engagement_id, findings)
+                dd_client = dd
+                dd_status = f"synced ({len(findings)} findings)"
+            else:
+                dd_status = "skipped (not reachable)"
+    except Exception:
+        dd_status = "skipped (error)"
+
+    jsonl_count = len(writer.read_findings(product=product))
+    click.echo(f"      JSONL: {jsonl_path} ({jsonl_count} entries)")
+    click.echo(f"      DefectDojo: {dd_status}")
+
+    exporter = EvidenceExporter(jsonl_reader=writer, controls_repo=repo, defectdojo_client=dd_client)
     evidence = exporter.export(product=product, output_path=evidence_dir)
 
     report_file = Path(evidence_dir) / f"{evidence['report_id']}.json"
     summary = evidence["summary"]
     click.echo(f"      Report: {report_file}")
-    click.echo(f"      Controls coverage: {summary['coverage_percentage']}%")
+    click.echo(f"      Coverage: {summary['coverage_percentage']}%")
 
     click.echo(f"\n\u2713 Demo complete. See {output_dir}/ for full results.")

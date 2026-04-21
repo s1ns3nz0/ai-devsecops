@@ -60,6 +60,21 @@ With AWS Bedrock configured:
 make demo-full     # AI-augmented risk assessment narratives
 ```
 
+### DefectDojo Integration (Optional)
+
+DefectDojo serves as the evidence source of truth when available. Without it, JSONL is used as the fallback.
+
+```bash
+docker compose up -d          # Start DefectDojo
+export DD_API_KEY="your-key"  # Get from DefectDojo admin panel
+make demo-docker              # Run demo with DefectDojo sync
+```
+
+When `DD_API_KEY` is set:
+- `assess` command syncs findings to DefectDojo after JSONL write
+- `export` command reads findings from DefectDojo (falls back to JSONL if unavailable)
+- Gate decisions are unaffected — DefectDojo is evidence path only (ADR-003)
+
 ## Demo Output
 
 > Replay the demo locally: `asciinema play assets/demo.cast`

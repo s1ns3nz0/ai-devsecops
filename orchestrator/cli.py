@@ -257,6 +257,22 @@ def assess(
     writer = JsonlWriter(jsonl_path)
     writer.write_findings(findings)
 
+    # Evidence path: optionally sync to DefectDojo (after JSONL, before gate)
+    try:
+        from orchestrator.integrations.defectdojo import DefectDojoClient
+
+        dd_url = os.environ.get("DEFECTDOJO_URL", "http://127.0.0.1:8080")
+        dd_key = os.environ.get("DD_API_KEY", "")
+        if dd_key:
+            dd = DefectDojoClient(base_url=dd_url, api_key=dd_key)
+            if dd.health_check():
+                product_id = dd.get_or_create_product(product)
+                engagement_id = dd.get_or_create_engagement(product_id, f"assess-{trigger}")
+                dd.import_findings(engagement_id, findings)
+                click.echo(f"      DefectDojo: {len(findings)} findings synced")
+    except Exception:
+        pass  # DefectDojo is optional (evidence path only)
+
     # [3/4] Gate evaluation — two additive layers (YAML + OPA)
     from orchestrator.gate.combined import CombinedGateEvaluator
     from orchestrator.gate.opa import OpaEvaluator
@@ -343,7 +359,19 @@ def export_cmd(
     repo = ControlsRepository(baselines_dir=baselines, tier_mappings_path=mappings)
     repo.load_all()
 
-    exporter = EvidenceExporter(jsonl_reader=reader, controls_repo=repo)
+    # Optionally use DefectDojo as data source
+    dd_client = None
+    try:
+        dd_key = os.environ.get("DD_API_KEY", "")
+        if dd_key:
+            from orchestrator.integrations.defectdojo import DefectDojoClient
+
+            dd_url = os.environ.get("DEFECTDOJO_URL", "http://127.0.0.1:8080")
+            dd_client = DefectDojoClient(base_url=dd_url, api_key=dd_key)
+    except Exception:
+        pass
+
+    exporter = EvidenceExporter(jsonl_reader=reader, controls_repo=repo, defectdojo_client=dd_client)
     report = exporter.export(product=product, control_id=control_id, period=period, output_path=output)
 
     click.echo(f"Evidence report: {output}/{report['report_id']}.json")
