@@ -6,7 +6,7 @@ This document specifies the design of a centralized, in-house DevSecOps platform
 
 The platform inverts the default assumption of most Application Security Posture Management (ASPM) tools. Instead of aggregating scanner output first and mapping to compliance frameworks as an afterthought, this platform starts from the compliance framework (NIST CSF, CIS Controls, PCI DSS, FISC, OWASP ASVS) and derives the verification activities — SAST, DAST, IaC policy, SCA, runtime detection — from the applicable controls.
 
-The AI layer, hosted on AWS Bedrock, is deliberately scoped to a **contextual translator** role. It never acts as a scanner, nor does it close policy gates. Deterministic rule engines (OPA/Rego, YAML thresholds, Checkov hard-fail, Dependency-Track policy) retain exclusive authority over block/allow decisions. This is a critical design constraint for auditability in regulated environments.
+The AI layer, hosted on AWS Bedrock, is deliberately scoped to a **contextual translator** role. It never acts as a scanner, nor does it close policy gates. Deterministic rule engines (OPA/Rego, YAML thresholds, Checkov hard-fail) retain exclusive authority over block/allow decisions. This is a critical design constraint for auditability in regulated environments.
 
 ### Core thesis
 
@@ -58,9 +58,9 @@ Product security for SMBC-partnered digital bank. NIST CSF, CIS Controls, FISC, 
 
 ## 4. Architecture
 
-### Design Principles (validated through 4 rounds of Red Team review)
+### Design Principles (validated through 11 rounds of Red Team review)
 
-1. **Gate path is 100% local.** Gate decisions (pass/fail) depend only on local CLI scanner output + local YAML threshold evaluation. No external service (DefectDojo, Dependency-Track, Bedrock) can block the gate path.
+1. **Gate path is 100% local.** Gate decisions (pass/fail) depend only on local CLI scanner output + local YAML threshold evaluation. No external service (DefectDojo, Bedrock) can block the gate path.
 
 2. **Evidence path is networked and recoverable.** Findings are written to JSONL (always, local) and optionally pushed to DefectDojo. If DefectDojo is down, findings are queued and reconciled later.
 
@@ -239,13 +239,13 @@ Never an AI inference.
 | Grype | SCA | Yes | PCI-DSS-6.3.1, ASVS-V14.2.1 |
 | Gitleaks | Secrets | Yes | PCI-DSS-3.5.1, ASVS-V2.10.1 |
 
-### MVP Tier Additional Scanners
+### Future Scanners (planned, not yet implemented)
 
 | Scanner | Category | Gate? | Notes |
 |---|---|---|---|
 | CodeQL | SAST (semantic) | Yes | Custom queries for fintech |
 | ZAP | DAST | Tier-dependent | Requires running target |
-| cdxgen + DT | SCA enrichment | No (enrichment only) | EPSS, VEX, policy engine |
+| Dependency-Track | SCA enrichment | No (enrichment only) | EPSS, VEX, policy engine |
 
 ### Control ID Mapping
 
@@ -349,7 +349,7 @@ Sigma rules match 5 attack patterns in application logs.
 | Controls | OSCAL YAML + JSON Schema | Framework source of truth |
 | SAST | Semgrep | Code vulnerability detection |
 | IaC scanning | Checkov | Infrastructure policy checking |
-| SCA | Grype (gate) + Dependency-Track (enrichment) | Supply chain analysis |
+| SCA | Grype (gate) + Syft (SBOM) | Supply chain analysis |
 | Secrets | Gitleaks | Credential detection |
 | Policy engine | YAML thresholds + OPA/Rego | Deterministic gate decisions |
 | Detection | Custom Sigma engine | Runtime detection |
@@ -374,7 +374,7 @@ Sigma rules match 5 attack patterns in application logs.
 | Contract | API response parsing | Recorded responses, no live services |
 | E2E | Full demo flow | `make demo` with real or fixture data |
 
-124 unit tests. mypy strict mode. ruff linting.
+166+ unit tests. mypy strict mode. ruff linting.
 
 ---
 
@@ -400,14 +400,16 @@ Each ADR includes rationale, tradeoffs, and what was explicitly rejected.
 
 | Extension | Description |
 |---|---|
+| Dependency-Track | SCA enrichment with EPSS scores, VEX workflow, policy engine |
+| CodeQL | Custom semantic queries for fintech (hardcoded creds, negative payment, PII logging) |
+| ZAP (DAST) | Dynamic application security testing against running targets |
+| Failure policy | Retry logic, override mechanism, SLA tracking per risk tier |
+| Two-stage AI | Haiku filter → Sonnet reason pipeline for large finding sets |
 | D3FEND mapping | Defensive countermeasure mapping bridging ATT&CK threats to controls |
-| Full SOC integration | Wazuh/ELK for production SIEM |
 | Container signing | Image signing with cosign/Sigstore (scanning already implemented) |
 | DORA metrics | Deployment frequency, lead time, MTTR, change failure rate |
-| Multi-framework crosswalks | PCI↔NIST CSF, FISC↔ISO 27001 mapping files |
 | Backstage plugin | Developer self-service + auditor view UI |
-| GitHub Actions workflow | CI/CD integration with PR-level gating |
 
 ---
 
-*This document was developed through 4 rounds of adversarial Red Team review (29 findings raised and resolved) to validate architectural consistency, compliance fidelity, and implementation feasibility.*
+*This document was developed through 11 rounds of adversarial Red Team review (81+ findings raised and resolved) to validate architectural consistency, compliance fidelity, and implementation feasibility.*
