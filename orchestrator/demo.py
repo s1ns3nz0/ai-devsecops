@@ -130,6 +130,32 @@ def run_demo(target_path: str, product: str = "payment-api") -> None:
     except Exception:
         click.echo("      SBOM generation skipped (syft not installed or error)")
 
+    # ── [4.5] Failure policy evaluation (shown only when scanners fail) ──
+    # In demo mode, scanners run without retry. This step is displayed only
+    # when scanner failures are detected (e.g. when retry is enabled externally).
+    # The demo uses ScannerRunner without retry_config, so failures are captured
+    # via the log-and-continue pattern. This block is a placeholder that shows
+    # the failure policy step in the demo output if scanner_counts indicate missing scanners.
+    expected_scanners = {"checkov", "semgrep", "grype", "gitleaks"}
+    actual_scanners = set(scanner_counts.keys())
+    missing_scanners = expected_scanners - actual_scanners
+    if missing_scanners:
+        from orchestrator.resilience.failure import FailureHandler
+        from orchestrator.resilience.retry import RetryResult
+
+        # Synthesize retry results for missing scanners
+        synth_results = [
+            RetryResult(scanner=s, success=False, attempts=1, total_time=0.0, error_message="scanner not available")
+            for s in sorted(missing_scanners)
+        ]
+        handler = FailureHandler(profile)
+        decision = handler.handle(synth_results, tier)
+        if decision.failed_scanners:
+            click.echo("\n[4.5] Failure policy evaluation")
+            click.echo(f"      Failed scanners: {', '.join(decision.failed_scanners)}")
+            click.echo(f"      Tier: {tier.value} \u2192 policy: {decision.action}")
+            click.echo(f"      Action: {decision.reason}")
+
     # ── [5/8] Gate evaluation — two additive layers (YAML + OPA) ──
     click.echo("\n[5/8] Gate evaluation (RMF Step 6: Authorize)")
     from orchestrator.gate.combined import CombinedGateEvaluator
