@@ -27,8 +27,9 @@ services:
       timeout: 5s
       retries: 5
 
-  defectdojo-django:
+  uwsgi:
     image: defectdojo/defectdojo-django:2.38.1
+    platform: linux/amd64
     depends_on:
       defectdojo-postgres:
         condition: service_healthy
@@ -46,14 +47,16 @@ services:
 
   defectdojo-nginx:
     image: defectdojo/defectdojo-nginx:2.38.1
+    platform: linux/amd64
     depends_on:
-      - defectdojo-django
+      - uwsgi
     ports:
       - "127.0.0.1:8080:8080"
     restart: unless-stopped
 
   defectdojo-celery-beat:
     image: defectdojo/defectdojo-django:2.38.1
+    platform: linux/amd64
     depends_on:
       defectdojo-postgres:
         condition: service_healthy
@@ -69,6 +72,7 @@ services:
 
   defectdojo-celery-worker:
     image: defectdojo/defectdojo-django:2.38.1
+    platform: linux/amd64
     depends_on:
       defectdojo-postgres:
         condition: service_healthy
