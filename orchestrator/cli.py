@@ -171,6 +171,10 @@ def scan(
 @click.option("--tier-mappings", default=None)
 @click.option("--product-dir", default=None)
 @click.option("--output-jsonl", default=None)
+@click.option("--retry", is_flag=True, default=False, help="Enable retry with failure policy")
+@click.option("--force-override", is_flag=True, default=False, help="Override a scan failure block")
+@click.option("--override-reason", default=None, help="Predefined override reason category")
+@click.option("--override-justification", default=None, help="Free text explanation for override")
 def assess(
     target_path: str,
     product: str,
@@ -179,6 +183,10 @@ def assess(
     tier_mappings: str | None,
     product_dir: str | None,
     output_jsonl: str | None,
+    retry: bool,
+    force_override: bool,
+    override_reason: str | None,
+    override_justification: str | None,
 ) -> None:
     """Run full risk assessment: scan + gate + risk report.
 
@@ -208,8 +216,16 @@ def assess(
     click.echo("[2/4] Running scanners")
     mapper = ControlMapper(repo)
     scanners = _build_scanners(mapper)
-    runner = ScannerRunner(scanners)
-    findings = runner.run_all(target_path)
+
+    retry_results = None
+    if retry:
+        from orchestrator.resilience.retry import RetryConfig
+
+        runner_obj = ScannerRunner(scanners, retry_config=RetryConfig())
+        findings, retry_results = runner_obj.run_all_with_retry(target_path)
+    else:
+        runner_obj = ScannerRunner(scanners)
+        findings = runner_obj.run_all(target_path)
 
     for f in findings:
         f.product = product
@@ -227,6 +243,49 @@ def assess(
 
     if not findings:
         click.echo("      No findings")
+
+    # [2.5/4] Failure policy evaluation (only when retry is enabled)
+    if retry and retry_results is not None:
+        from orchestrator.resilience.failure import FailureHandler
+        from orchestrator.resilience.override import OverrideManager
+
+        handler = FailureHandler(profile)
+        decision = handler.handle(retry_results, tier)
+
+        failed = decision.failed_scanners
+        if failed:
+            click.echo("[2.5/4] Failure policy evaluation")
+            click.echo(f"      Failed scanners: {', '.join(failed)}")
+            click.echo(f"      Tier: {tier.value} \u2192 policy: {decision.action}")
+
+            if decision.action == "block":
+                if force_override:
+                    if not override_reason:
+                        click.echo("      Error: --force-override requires --override-reason")
+                        sys.exit(1)
+
+                    writer = JsonlWriter(jsonl_path)
+                    mgr = OverrideManager(writer)
+                    record = mgr.create_override(
+                        product=product,
+                        tier=tier.value,
+                        failed_scanners=failed,
+                        reason=override_reason,
+                        justification=override_justification or "",
+                        approver="force-override",
+                    )
+                    click.echo("      Action: OVERRIDE GRANTED")
+                    click.echo(f"      Reason: {record.reason}")
+                    click.echo(f"      Justification: \"{record.justification}\"")
+                    click.echo(f"      SLA deadline: {record.deferred_scan_sla}")
+                    click.echo(f"      Override recorded: {record.id}")
+                else:
+                    click.echo(f"      Action: BLOCKED \u2014 scanner failure in {tier.value} tier")
+                    click.echo("      Override: use --force-override --override-reason <reason>")
+                    sys.exit(1)
+            else:
+                # warn_and_proceed
+                click.echo(f"      Action: {decision.action} \u2014 {decision.reason}")
 
     # SBOM generation (supply chain evidence)
     try:
@@ -542,6 +601,28 @@ def sync(product: str, defectdojo_url: str, api_key: str | None, jsonl_path: str
     click.echo(f"[sync] Synced {len(findings)} findings to DefectDojo")
     click.echo(f"       Product: {product} (id={product_id})")
     click.echo(f"       Created: {result['created']}, Skipped: {result['skipped']}, Errors: {result['errors']}")
+
+
+@cli.command()
+@click.option("--product", default=None, help="Filter by product name")
+@click.option("--jsonl-path", default=None, help="JSONL path for override records")
+def status(product: str | None, jsonl_path: str | None) -> None:
+    """Show pending overrides and SLA status."""
+    from orchestrator.resilience.override import OverrideManager
+
+    jpath = jsonl_path or _default_path("output/findings.jsonl")
+    writer = JsonlWriter(jpath)
+    mgr = OverrideManager(writer)
+
+    overrides = mgr.get_pending_overrides(product=product)
+
+    if not overrides:
+        click.echo("No pending overrides.")
+        return
+
+    click.echo("Pending overrides:")
+    for o in overrides:
+        click.echo(f"  {o.id} | {o.product} | {o.reason} | SLA: {o.deferred_scan_sla}")
 
 
 @cli.command()

@@ -2,9 +2,39 @@
   "project": "Compliance-Driven AI Risk Platform",
   "phase": "2-failure-policy",
   "steps": [
-    { "step": 0, "name": "retry-engine", "status": "pending" },
-    { "step": 1, "name": "failure-handler", "status": "pending" },
-    { "step": 2, "name": "override-mechanism", "status": "pending" },
-    { "step": 3, "name": "cli-integration", "status": "pending" }
-  ]
+    {
+      "step": 0,
+      "name": "retry-engine",
+      "status": "completed",
+      "started_at": "2026-04-22T00:10:56+0900",
+      "summary": "RetryEngine with fixed backoff [10s,30s,60s], 120s cap, 3 max attempts; ScannerRunner updated with optional retry_config (backward-compatible)",
+      "completed_at": "2026-04-22T00:18:03+0900"
+    },
+    {
+      "step": 1,
+      "name": "failure-handler",
+      "status": "completed",
+      "started_at": "2026-04-22T00:18:03+0900",
+      "summary": "FailureHandler with tier-based deterministic policy: critical/high block on scan failure (override available), medium/low warn_and_proceed; 8 unit tests",
+      "completed_at": "2026-04-22T00:20:22+0900"
+    },
+    {
+      "step": 2,
+      "name": "override-mechanism",
+      "status": "completed",
+      "started_at": "2026-04-22T00:20:22+0900",
+      "summary": "OverrideManager with JSONL audit trail, OVR-YYYY-MMDD-NNN ID format, predefined reasons, SLA deadline, pending override query; 6 unit tests",
+      "completed_at": "2026-04-22T00:25:45+0900"
+    },
+    {
+      "step": 3,
+      "name": "cli-integration",
+      "status": "completed",
+      "started_at": "2026-04-22T00:25:45+0900",
+      "summary": "Assess command integrated with failure policy (--retry, --force-override, --override-reason, --override-justification flags); status command for pending overrides; demo.py failure policy step; ADR-010 added; 7 unit tests",
+      "completed_at": "2026-04-22T00:32:47+0900"
+    }
+  ],
+  "created_at": "2026-04-22T00:10:56+0900",
+  "completed_at": "2026-04-22T00:32:48+0900"
 }
