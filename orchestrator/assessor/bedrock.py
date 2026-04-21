@@ -124,6 +124,8 @@ class BedrockRiskAssessor:
 
             narrative = data["narrative"]
             gate_rec = data.get("gate_recommendation", "proceed")
+            insights = data.get("cross_signal_insights", [])
+            recs = data.get("recommendations", [])
 
             return RiskReport(
                 id=_generate_report_id(),
@@ -137,6 +139,8 @@ class BedrockRiskAssessor:
                 findings_summary=severity_dist,
                 affected_controls=affected_controls,
                 gate_recommendation=gate_rec,
+                cross_signal_insights=insights,
+                recommendations=recs,
             )
         except (BedrockInvocationError, json.JSONDecodeError, KeyError, ValueError) as exc:
             logger.warning("Bedrock assess failed, falling back to static: %s", exc)

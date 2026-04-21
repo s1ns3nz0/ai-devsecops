@@ -64,6 +64,8 @@ class RiskReport:
     findings_summary: dict[str, int]
     affected_controls: list[str]
     gate_recommendation: str
+    cross_signal_insights: list[str] = field(default_factory=list)
+    recommendations: list[str] = field(default_factory=list)
 
 
 @dataclass

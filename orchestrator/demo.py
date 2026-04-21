@@ -165,9 +165,25 @@ def run_demo(target_path: str, product: str = "payment-api") -> None:
     report = assessor.assess(findings, manifest, controls, "pre_merge")
     writer.write_risk_report(report)
 
-    mode = "AI-augmented" if os.environ.get("BEDROCK_MODEL_ID") else "static"
+    is_ai_mode = bool(os.environ.get("BEDROCK_MODEL_ID"))
+    mode = "AI-augmented (Claude Sonnet)" if is_ai_mode else "static"
     click.echo(f"      Risk score: {report.risk_score:.1f}/10")
     click.echo(f"      Mode: {mode}")
+
+    if is_ai_mode:
+        # Show AI narrative (first 200 chars to keep demo output readable)
+        narrative_preview = report.narrative[:200]
+        if len(report.narrative) > 200:
+            narrative_preview += "..."
+        click.echo(f"      Narrative: \"{narrative_preview}\"")
+        if report.cross_signal_insights:
+            click.echo("      Cross-signal insights:")
+            for insight in report.cross_signal_insights:
+                click.echo(f"        - \"{insight}\"")
+        if report.recommendations:
+            click.echo("      Recommendations:")
+            for rec in report.recommendations:
+                click.echo(f"        - \"{rec}\"")
 
     # Save risk assessment YAML
     ra_dir = prod_dir / "risk-assessments"
