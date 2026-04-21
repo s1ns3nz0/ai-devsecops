@@ -462,6 +462,64 @@ def container_scan(
 
 
 @cli.command()
+@click.option("--product", required=True)
+@click.option("--defectdojo-url", default="http://127.0.0.1:8080")
+@click.option("--api-key", envvar="DD_API_KEY")
+@click.option("--jsonl-path", default=None)
+def sync(product: str, defectdojo_url: str, api_key: str | None, jsonl_path: str | None) -> None:
+    """Sync JSONL findings to DefectDojo."""
+    from orchestrator.integrations.defectdojo import DefectDojoClient
+
+    jpath = jsonl_path or _default_path("output/findings.jsonl")
+
+    if not api_key:
+        click.echo("Error: --api-key or DD_API_KEY required", err=True)
+        sys.exit(1)
+
+    client = DefectDojoClient(base_url=defectdojo_url, api_key=api_key)
+
+    if not client.health_check():
+        click.echo(f"Warning: DefectDojo not reachable at {defectdojo_url}. Skipping sync.", err=True)
+        click.echo("JSONL findings remain as backup (ADR-003).")
+        return
+
+    reader = JsonlWriter(jpath)
+    entries = reader.read_findings(product=product)
+
+    if not entries:
+        click.echo(f"No findings for product '{product}' in {jpath}")
+        return
+
+    # Convert JSONL entries back to Finding objects
+    findings: list[Finding] = []
+    for entry in entries:
+        data = entry.get("data", {})
+        findings.append(
+            Finding(
+                source=data.get("source", ""),
+                rule_id=data.get("rule_id", ""),
+                severity=data.get("severity", ""),
+                file=data.get("file", ""),
+                line=data.get("line", 0),
+                message=data.get("message", ""),
+                control_ids=data.get("control_ids", []),
+                product=data.get("product", ""),
+            )
+        )
+
+    product_id = client.get_or_create_product(product)
+    engagement_id = client.get_or_create_engagement(product_id, "pipeline-scan")
+    result = client.import_findings(engagement_id, findings)
+
+    stats = result.get("statistics", {})
+    click.echo(f"[sync] Synced {len(findings)} findings to DefectDojo")
+    click.echo(f"       Product: {product} (id={product_id})")
+    click.echo(f"       Created: {stats.get('created', 0)}, "
+               f"Closed: {stats.get('closed', 0)}, "
+               f"Reactivated: {stats.get('reactivated', 0)}")
+
+
+@cli.command()
 @click.argument("target_path")
 @click.option("--product", default="payment-api")
 def demo(target_path: str, product: str) -> None:
