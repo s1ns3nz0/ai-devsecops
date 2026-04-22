@@ -625,6 +625,106 @@ def status(product: str | None, jsonl_path: str | None) -> None:
         click.echo(f"  {o.id} | {o.product} | {o.reason} | SLA: {o.deferred_scan_sla}")
 
 
+@cli.command("threat-model")
+@click.argument("target_path")
+@click.option("--product", required=True)
+@click.option("--output", default="output", help="Output directory")
+def threat_model_cmd(target_path: str, product: str, output: str) -> None:
+    """Generate threat model from real application components.
+
+    Analyzes SBOM components + CVEs + product context to produce
+    a threat model with concrete attack scenarios.
+    """
+    from orchestrator.intelligence.enricher import VulnerabilityEnricher
+    from orchestrator.intelligence.epss import EpssClient
+    from orchestrator.intelligence.threat_model import StaticThreatModelGenerator
+    from orchestrator.scanners.grype import GrypeScanner
+    from orchestrator.scanners.sbom import SbomGenerator
+
+    # Load product manifest + controls
+    prod_dir = _PROJECT_ROOT / "controls" / "products" / product
+    manifest = load_manifest(str(prod_dir / "product-manifest.yaml"))
+
+    baselines = _default_path("controls/baselines")
+    mappings = _default_path("controls/tier-mappings.yaml")
+    repo = ControlsRepository(baselines_dir=baselines, tier_mappings_path=mappings)
+    repo.load_all()
+
+    assessor = StaticRiskAssessor()
+    tier = assessor.categorize(manifest)
+    controls = select_baseline(repo, manifest, tier)
+
+    mapper = ControlMapper(repo)
+
+    # [1/4] SBOM generation
+    click.echo("[1/4] SBOM generation")
+    sbom_gen = SbomGenerator()
+    sbom_result = sbom_gen.generate(target_path, output)
+    raw_components = sbom_result.raw_sbom.get("components", [])
+    components: list[dict[str, object]] = (
+        raw_components if isinstance(raw_components, list) else []
+    )
+    component_names = [
+        f"{c.get('name', '?')} {c.get('version', '?')}"
+        for c in components
+        if isinstance(c, dict)
+    ]
+    click.echo(f"      Components: {sbom_result.components_count}")
+
+    # [2/4] Vulnerability scan + EPSS enrichment
+    click.echo("[2/4] Vulnerability scan + EPSS enrichment")
+    grype = GrypeScanner(mapper)
+    findings = grype.scan(target_path)
+
+    epss_client = EpssClient()
+    enricher = VulnerabilityEnricher(epss_client, mapper)
+    enriched = enricher.enrich(findings, manifest)
+    enriched = enricher.sort_by_priority(enriched)
+
+    epss_enriched = sum(1 for v in enriched if v.epss_score is not None)
+    epss_critical = sum(1 for v in enriched if v.epss_score is not None and v.epss_score > 0.5)
+    epss_high = sum(
+        1 for v in enriched
+        if v.epss_score is not None and 0.1 < v.epss_score <= 0.5
+    )
+
+    click.echo(f"      CVEs found: {len(findings)}")
+    click.echo(f"      EPSS enriched: {epss_enriched}/{len(findings)}")
+    click.echo(f"      CRITICAL (EPSS > 0.5): {epss_critical}")
+    click.echo(f"      HIGH (EPSS > 0.1): {epss_high}")
+
+    # [3/4] Threat model generation
+    click.echo("[3/4] Threat model generation")
+    generator = StaticThreatModelGenerator()
+    threat_model = generator.generate(
+        manifest=manifest,
+        sbom_components=component_names,
+        enriched_vulns=enriched,
+        controls=controls,
+    )
+
+    click.echo(f"      Mode: {threat_model.mode}")
+    click.echo(f"      Attack surface: {threat_model.attack_surface_summary}")
+    click.echo(f"      Threat actors: {len(threat_model.threat_actors)}")
+    click.echo(f"      Threat scenarios: {len(threat_model.threat_scenarios)}")
+
+    # [4/4] Controls gap analysis
+    click.echo("[4/4] Controls gap analysis")
+    click.echo(f"      Required by threat model: {len(threat_model.controls_required)} controls")
+    click.echo(f"      Currently covered: {len(threat_model.controls_covered)} controls")
+    click.echo(f"      Gap: {len(threat_model.controls_gap)} controls")
+    for gap_id in threat_model.controls_gap:
+        click.echo(f"        - {gap_id}")
+
+    # Write YAML output
+    output_path = Path(output)
+    output_path.mkdir(parents=True, exist_ok=True)
+    yaml_file = output_path / f"threat-model-{product}.yaml"
+    yaml_file.write_text(threat_model.to_yaml())
+
+    click.echo(f"\nThreat model saved: {yaml_file}")
+
+
 @cli.command()
 @click.argument("target_path")
 @click.option("--product", default="payment-api")
