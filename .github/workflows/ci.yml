@@ -20,6 +20,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: "pip"
 
       - name: Install dependencies
         run: pip install -e ".[dev]"
@@ -35,3 +36,70 @@ jobs:
 
       - name: Contract tests
         run: pytest tests/contract/ -v --tb=short
+
+  # ─────────────────────────────────────────────────────
+  # DEVELOP PHASE: Fast security checks on every push
+  # Shift-left: catch secrets, code vulns, IaC misconfigs
+  # before they reach the PR gate
+  # ─────────────────────────────────────────────────────
+  security-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install platform + scanners
+        run: |
+          pip install -e ".[dev]"
+          pip install checkov semgrep
+          GITLEAKS_VERSION="8.21.2"
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar xz -C /usr/local/bin gitleaks
+
+      - name: Secrets scan (Gitleaks)
+        id: secrets
+        continue-on-error: true
+        run: |
+          gitleaks detect --source . --no-git --report-format json --report-path gitleaks-results.json 2>&1 || true
+          if [ -s gitleaks-results.json ]; then
+            echo "secrets_found=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::Gitleaks detected secrets in the codebase"
+          else
+            echo "secrets_found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: SAST scan (Semgrep)
+        id: sast
+        continue-on-error: true
+        run: |
+          semgrep scan --json --quiet . > semgrep-results.json 2>/dev/null || true
+          FINDINGS=$(python3 -c "import json; d=json.load(open('semgrep-results.json')); print(len(d.get('results',[])))" 2>/dev/null || echo "0")
+          echo "sast_findings=$FINDINGS" >> "$GITHUB_OUTPUT"
+          if [ "$FINDINGS" -gt 0 ]; then
+            echo "::warning::Semgrep found $FINDINGS security findings"
+          fi
+
+      - name: IaC scan (Checkov)
+        id: iac
+        continue-on-error: true
+        run: |
+          checkov -d . --output json --quiet > checkov-results.json 2>/dev/null || true
+          echo "::notice::Checkov IaC scan completed"
+
+      - name: Upload scan results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: develop-phase-scan-results
+          path: |
+            gitleaks-results.json
+            semgrep-results.json
+            checkov-results.json
+          retention-days: 30
