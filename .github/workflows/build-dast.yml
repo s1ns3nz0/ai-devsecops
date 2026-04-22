@@ -48,9 +48,10 @@ jobs:
           curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
 
       # ── BUILD: Clone and build sample app container ──
-      - name: Clone sample-app
+      - name: Clone sample-app (pinned to verified commit)
         run: |
-          git clone --depth 1 https://github.com/s1ns3nz0/sample-vulnerable-app.git /tmp/sample-app
+          git clone https://github.com/s1ns3nz0/sample-vulnerable-app.git /tmp/sample-app
+          cd /tmp/sample-app && git checkout 98532d0f38bd7fd3bfb2ad9dd97f768435c2ecec
 
       - name: Build container image
         run: |
@@ -106,18 +107,22 @@ jobs:
             sleep 1
           done
 
-      - name: DAST scan (ZAP Baseline)
+      - name: DAST scan (ZAP API with OpenAPI spec)
         continue-on-error: true
         run: |
           echo "" >> build-output.txt
           echo "=== DAST Scan (ZAP) ===" >> build-output.txt
 
-          # Run ZAP baseline scan
+          # Copy OpenAPI spec for ZAP
+          cp /tmp/sample-app/openapi.yaml output/openapi.yaml
+
+          # Run ZAP API scan with OpenAPI spec for full endpoint coverage
           docker run --rm --network host \
             -v $(pwd)/output:/zap/wrk:rw \
             ghcr.io/zaproxy/zaproxy:stable \
-            zap-baseline.py \
-            -t http://127.0.0.1:8080 \
+            zap-api-scan.py \
+            -t /zap/wrk/openapi.yaml \
+            -f openapi \
             -J zap-results.json \
             -r zap-report.html \
             -I \
