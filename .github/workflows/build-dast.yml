@@ -1,0 +1,173 @@
+name: Build + DAST
+
+# ─────────────────────────────────────────────────────
+# BUILD + DAST phase (merge to main only)
+#
+# Pipeline position:
+#   DEVELOP (push) → TEST+GATE (PR) → BUILD+DAST (merge) → RELEASE (tag)
+#
+# This workflow:
+# 1. Builds container image from sample-app
+# 2. Scans the image with Grype (container vuln scan)
+# 3. Generates SBOM for the image
+# 4. Starts the container
+# 5. Runs ZAP DAST against the live app
+# 6. Aggregates container + DAST findings
+# ─────────────────────────────────────────────────────
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: build-dast-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install platform
+        run: pip install -e ".[dev]"
+
+      - name: Install tools
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+      # ── BUILD: Clone and build sample app container ──
+      - name: Clone sample-app
+        run: |
+          git clone --depth 1 https://github.com/s1ns3nz0/sample-vulnerable-app.git /tmp/sample-app
+
+      - name: Build container image
+        run: |
+          docker build -t payment-api:${{ github.sha }} /tmp/sample-app
+          echo "Image built: payment-api:${{ github.sha }}" | tee build-output.txt
+
+      # ── CONTAINER SCAN: Grype scans the built image ──
+      - name: Container image scan (Grype)
+        continue-on-error: true
+        run: |
+          echo "" >> build-output.txt
+          echo "=== Container Image Scan ===" >> build-output.txt
+          grype payment-api:${{ github.sha }} -o json > container-scan.json 2>/dev/null || true
+          VULNS=$(python3 -c "import json; d=json.load(open('container-scan.json')); print(len(d.get('matches',[])))" 2>/dev/null || echo "0")
+          echo "Container vulnerabilities: $VULNS" | tee -a build-output.txt
+
+          # Parse by severity
+          python3 -c "
+          import json
+          d = json.load(open('container-scan.json'))
+          matches = d.get('matches', [])
+          sevs = {}
+          for m in matches:
+              s = m.get('vulnerability',{}).get('severity','Unknown').lower()
+              sevs[s] = sevs.get(s, 0) + 1
+          for s, n in sorted(sevs.items()):
+              print(f'  {s}: {n}')
+          " 2>/dev/null | tee -a build-output.txt
+
+      # ── SBOM: Generate for the container image ──
+      - name: Generate container SBOM (Syft)
+        continue-on-error: true
+        run: |
+          syft payment-api:${{ github.sha }} -o cyclonedx-json --file output/container-sbom.cdx.json
+          COMPONENTS=$(python3 -c "import json; d=json.load(open('output/container-sbom.cdx.json')); print(len(d.get('components',[])))" 2>/dev/null || echo "0")
+          echo "Container SBOM: $COMPONENTS components" | tee -a build-output.txt
+
+      # ── DAST: Start app and scan with ZAP ──
+      - name: Start application
+        run: |
+          docker run -d \
+            -p 127.0.0.1:8080:8080 \
+            --name test-app \
+            payment-api:${{ github.sha }}
+
+          # Wait for app to be ready
+          echo "Waiting for application startup..."
+          for i in $(seq 1 30); do
+            if curl -s http://127.0.0.1:8080/health > /dev/null 2>&1; then
+              echo "Application ready after ${i}s" | tee -a build-output.txt
+              break
+            fi
+            sleep 1
+          done
+
+      - name: DAST scan (ZAP Baseline)
+        continue-on-error: true
+        run: |
+          echo "" >> build-output.txt
+          echo "=== DAST Scan (ZAP) ===" >> build-output.txt
+
+          # Run ZAP baseline scan
+          docker run --rm --network host \
+            -v $(pwd)/output:/zap/wrk:rw \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+            -t http://127.0.0.1:8080 \
+            -J zap-results.json \
+            -r zap-report.html \
+            -I \
+            2>&1 | tail -20 | tee -a build-output.txt
+
+          # Parse ZAP results
+          if [ -f output/zap-results.json ]; then
+            python3 -c "
+          import json
+          d = json.load(open('output/zap-results.json'))
+          sites = d.get('site', [])
+          total_alerts = 0
+          risk_counts = {'High': 0, 'Medium': 0, 'Low': 0, 'Informational': 0}
+          for site in sites:
+              for alert in site.get('alerts', []):
+                  risk = alert.get('riskdesc', '').split(' ')[0]
+                  risk_counts[risk] = risk_counts.get(risk, 0) + 1
+                  total_alerts += 1
+          print(f'DAST findings: {total_alerts}')
+          for risk, count in risk_counts.items():
+              if count > 0:
+                  print(f'  {risk}: {count}')
+          " 2>/dev/null | tee -a build-output.txt
+          fi
+
+      - name: Stop application
+        if: always()
+        run: docker stop test-app 2>/dev/null || true
+
+      # ── Summary ──
+      - name: Build + DAST summary
+        if: always()
+        run: |
+          echo "## Build + DAST Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Pipeline: \`DEVELOP\` → \`TEST+GATE\` → **\`BUILD+DAST\`** → \`RELEASE\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+          cat build-output.txt >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+          echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload build + DAST artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-dast-evidence
+          path: |
+            build-output.txt
+            container-scan.json
+            output/container-sbom.cdx.json
+            output/zap-results.json
+            output/zap-report.html
+          retention-days: 365
