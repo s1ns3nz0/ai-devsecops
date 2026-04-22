@@ -16,7 +16,7 @@
       "status": "completed",
       "started_at": "2026-04-22T08:16:23+0900",
       "summary": "EnrichedVulnerability model + VulnerabilityEnricher with EPSS×CVSS×PCI priority scoring, sort, and 8 unit tests (215 total pass)",
-      "completed_at": "2026-04-22T08:30:00+0900"
+      "completed_at": "2026-04-22T11:14:52+0900"
     },
     {
       "step": 2,
