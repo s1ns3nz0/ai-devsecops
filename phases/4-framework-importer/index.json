@@ -2,8 +2,23 @@
   "project": "Compliance-Driven AI Risk Platform",
   "phase": "4-framework-importer",
   "steps": [
-    { "step": 0, "name": "oscal-parser", "status": "pending" },
-    { "step": 1, "name": "scanner-mapper", "status": "pending" },
-    { "step": 2, "name": "cli-import", "status": "pending" }
-  ]
+    {
+      "step": 0,
+      "name": "oscal-parser",
+      "status": "completed",
+      "started_at": "2026-05-03T15:07:53+0900",
+      "summary": "OscalParser, GenericFrameworkParser, BaselineGenerator implemented with 15 unit tests — parses OSCAL JSON catalogs and ASVS JSON, generates baseline YAML with empty verification_methods"
+    },
+    {
+      "step": 1,
+      "name": "scanner-mapper",
+      "status": "pending"
+    },
+    {
+      "step": 2,
+      "name": "cli-import",
+      "status": "pending"
+    }
+  ],
+  "created_at": "2026-05-03T15:07:53+0900"
 }
