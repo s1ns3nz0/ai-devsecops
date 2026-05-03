@@ -29,7 +29,10 @@
     {
       "step": 3,
       "name": "sar-report",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-05-03T16:32:55+0900",
+      "completed_at": "2026-05-03T17:10:00+0900",
+      "summary": "SARGenerator with ControlAssessment/SecurityAssessmentReport dataclasses, per-control assessment logic (satisfied/other-than-satisfied/not-assessed), coverage calculation, and ATO/DATO recommendation from gate decision — 10 unit tests"
     },
     {
       "step": 4,
