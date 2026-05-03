@@ -7,7 +7,8 @@
       "name": "oscal-parser",
       "status": "completed",
       "started_at": "2026-05-03T15:07:53+0900",
-      "summary": "OscalParser, GenericFrameworkParser, BaselineGenerator implemented with 15 unit tests — parses OSCAL JSON catalogs and ASVS JSON, generates baseline YAML with empty verification_methods"
+      "summary": "OscalParser, GenericFrameworkParser, BaselineGenerator implemented with 15 unit tests — parses OSCAL JSON catalogs and ASVS JSON, generates baseline YAML with empty verification_methods",
+      "completed_at": "2026-05-03T15:13:21+0900"
     },
     {
       "step": 1,
