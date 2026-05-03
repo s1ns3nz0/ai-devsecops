@@ -19,11 +19,36 @@
         },
         "deployment": {
           "type": "object",
-          "required": ["cloud", "compute", "region"],
+          "required": ["cloud", "region"],
           "properties": {
             "cloud": { "type": "string" },
-            "compute": { "type": "string" },
-            "region": { "type": "string" }
+            "region": { "type": "string" },
+            "compute": {
+              "oneOf": [
+                { "type": "string" },
+                { "type": "array", "items": { "type": "object" } }
+              ]
+            },
+            "databases": {
+              "type": "array",
+              "items": { "type": "object" }
+            },
+            "storage": {
+              "type": "array",
+              "items": { "type": "object" }
+            },
+            "networking": {
+              "type": "array",
+              "items": { "type": "object" }
+            },
+            "messaging": {
+              "type": "array",
+              "items": { "type": "object" }
+            },
+            "observability": {
+              "type": "array",
+              "items": { "type": "object" }
+            }
           }
         },
         "integrations": {

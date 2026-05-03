@@ -1,15 +1,62 @@
 product:
   name: payment-api
   description: "QR code payment confirmation service"
+
   data_classification:
     - PCI
     - PII-financial
+
   jurisdiction:
     - JP
+
+  # ── Cloud-native deployment architecture ──
+  # Each service type drives different security controls:
+  #   compute    → container security, RBAC, pod policies
+  #   databases  → encryption at rest, access control, backups
+  #   storage    → bucket policies, public access block
+  #   networking → WAF, TLS, ingress rules
+  #   messaging  → queue encryption, dead letter config
+  #   serverless → function permissions, env var secrets
   deployment:
     cloud: AWS
-    compute: EKS
     region: ap-northeast-1
+
+    compute:
+      - type: EKS
+        description: "Main application containers"
+      - type: Lambda
+        description: "Payment notification handler"
+
+    databases:
+      - type: RDS
+        engine: PostgreSQL
+        encryption: required
+        description: "Payment records + cardholder data"
+      - type: DynamoDB
+        description: "Session cache"
+
+    storage:
+      - type: S3
+        encryption: required
+        public_access: denied
+        description: "Payment receipts + audit logs"
+
+    networking:
+      - type: API-Gateway
+        description: "Public REST API endpoint"
+      - type: ALB
+        description: "Internal load balancer"
+
+    messaging:
+      - type: SQS
+        encryption: required
+        description: "Payment processing queue"
+
+    observability:
+      - type: CloudWatch
+        log_retention_days: 365
+        description: "Application + audit logs"
+
   integrations:
     - external-payment-gateway
     - internal-user-db
