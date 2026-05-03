@@ -15,7 +15,7 @@
       "name": "sp800-30-models",
       "status": "completed",
       "started_at": "2026-05-03T16:24:08+0900",
-      "completed_at": "2026-05-03T16:40:00+0900",
+      "completed_at": "2026-05-03T16:26:19+0900",
       "summary": "SP 800-30 Rev 1 data models (ThreatSource, ThreatEvent, LikelihoodAssessment, ImpactAssessment, RiskDetermination, RiskResponse, SP80030Report) with 13 unit tests"
     },
     {
