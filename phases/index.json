@@ -22,7 +22,8 @@
     },
     {
       "dir": "4-framework-importer",
-      "status": "pending"
+      "status": "completed",
+      "completed_at": "2026-05-03T15:20:53+0900"
     }
   ]
 }

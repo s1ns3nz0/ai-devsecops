@@ -725,6 +725,122 @@ def threat_model_cmd(target_path: str, product: str, output: str) -> None:
     click.echo(f"\nThreat model saved: {yaml_file}")
 
 
+@cli.command("import-framework")
+@click.argument("source")
+@click.option("--framework-id", required=True, help="Framework identifier (e.g., cmmc-2.0-L2)")
+@click.option("--format", "fmt", default="oscal", type=click.Choice(["oscal", "asvs-json", "generic-json"]))
+@click.option("--output", default=None, help="Output YAML path (default: controls/baselines/{framework-id}.yaml)")
+@click.option("--suggest-scanners/--no-suggest-scanners", default=True, help="Auto-suggest scanner mappings via keyword matching")
+@click.option("--tiers", default="high,critical", help="Applicable tiers (comma-separated)")
+def import_framework(
+    source: str,
+    framework_id: str,
+    fmt: str,
+    output: str | None,
+    suggest_scanners: bool,
+    tiers: str,
+) -> None:
+    """Import a compliance framework and generate baseline YAML.
+
+    SOURCE can be a local file path or a URL.
+
+    Examples:
+      orchestrator import-framework ./nist-800-53-catalog.json --framework-id nist-800-53-r5
+
+      orchestrator import-framework https://raw.githubusercontent.com/... --framework-id nist-800-53-r5
+
+      orchestrator import-framework ./asvs.json --framework-id asvs-4.0.3-L2 --format asvs-json
+
+      orchestrator import-framework ./cmmc.json --framework-id cmmc-2.0-L2 --no-suggest-scanners
+    """
+    from orchestrator.importer.baseline import BaselineGenerator
+    from orchestrator.importer.oscal import OscalParser
+    from orchestrator.importer.generic import GenericFrameworkParser
+    from orchestrator.importer.suggest import ScannerSuggester
+
+    tier_list = [t.strip() for t in tiers.split(",")]
+    output_path = output or _default_path(f"controls/baselines/{framework_id}.yaml")
+
+    # [1/3] Parse source
+    click.echo("[1/3] Parsing source")
+    click.echo(f"      Source: {source}")
+    click.echo(f"      Format: {fmt}")
+
+    is_url = source.startswith("http://") or source.startswith("https://")
+
+    if fmt == "oscal":
+        parser = OscalParser()
+        if is_url:
+            controls = parser.parse_url(source, framework_id)
+        else:
+            controls = parser.parse_file(source, framework_id)
+    elif fmt == "asvs-json":
+        gp = GenericFrameworkParser()
+        controls = gp.parse_asvs_json(source, level=3)
+    else:
+        gp = GenericFrameworkParser()
+        controls = gp.parse_generic_json(source, framework_id=framework_id)
+
+    click.echo(f"      Controls found: {len(controls)}")
+
+    # [2/3] Generate baseline YAML
+    click.echo("[2/3] Generating baseline YAML")
+    click.echo(f"      Output: {output_path}")
+    click.echo(f"      Applicable tiers: {', '.join(tier_list)}")
+
+    if suggest_scanners:
+        # Generate with suggestions via ScannerSuggester
+        suggester = ScannerSuggester()
+        suggested, unmapped = suggester.apply_suggestions(controls, output_path)
+
+        # Patch applicable_tiers into the generated YAML
+        data = yaml.safe_load(Path(output_path).read_text())
+        for entry in data["controls"]:
+            entry["control"]["applicable_tiers"] = tier_list
+        with open(output_path, "w") as f:
+            yaml.dump(data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    else:
+        gen = BaselineGenerator()
+        gen.generate(controls, output_path, applicable_tiers=tier_list)
+        suggested = 0
+        unmapped = len(controls)
+
+    # [3/3] Summary
+    if suggest_scanners:
+        click.echo("[3/3] Suggesting scanner mappings")
+        click.echo(f"      Suggested: {suggested}/{len(controls)} controls (keyword match)")
+        click.echo(f"      Unmapped: {unmapped}/{len(controls)} controls (manual review needed)")
+
+        # Count per scanner
+        data = yaml.safe_load(Path(output_path).read_text())
+        scanner_counts: dict[str, int] = {}
+        for entry in data["controls"]:
+            for vm in entry["control"].get("verification_methods", []):
+                sc = vm.get("scanner", "unknown")
+                scanner_counts[sc] = scanner_counts.get(sc, 0) + 1
+
+        if scanner_counts:
+            click.echo("")
+            click.echo("      Suggested mappings:")
+            for sc, count in sorted(scanner_counts.items()):
+                click.echo(f"        {sc}: {count} controls")
+
+    click.echo("")
+    click.echo(f"Baseline generated: {output_path}")
+    click.echo("")
+    click.echo("IMPORTANT: Scanner mappings are SUGGESTIONS based on keyword matching.")
+    click.echo("  A security engineer must review and approve each mapping before use.")
+    if unmapped > 0:
+        click.echo(f"  {unmapped} controls have no suggested mapping and need manual assignment.")
+    click.echo("")
+    click.echo("Next steps:")
+    click.echo(f"  1. Review {output_path}")
+    click.echo("  2. Verify scanner mappings are correct")
+    click.echo("  3. Add framework to controls/compliance-mappings.yaml")
+    click.echo("  4. Add framework to controls/tier-mappings.yaml")
+    click.echo("  5. Run: orchestrator assess ./your-app --product your-product")
+
+
 @cli.command()
 @click.argument("target_path")
 @click.option("--product", default="payment-api")
