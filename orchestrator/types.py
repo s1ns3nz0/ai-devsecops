@@ -21,7 +21,7 @@ class ProductManifest:
     description: str
     data_classification: list[str]
     jurisdiction: list[str]
-    deployment: dict[str, str]
+    deployment: dict[str, object]
     integrations: list[str] = field(default_factory=list)
 
 

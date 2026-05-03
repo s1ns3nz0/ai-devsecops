@@ -57,7 +57,7 @@ class ThreatModel:
 
     # 입력 (AI에 제공되는 컨텍스트)
     components: list[str]  # SBOM에서 추출한 실제 컴포넌트 목록
-    architecture: dict[str, str]  # product manifest (deployment, integrations)
+    architecture: dict[str, object]  # product manifest (deployment, integrations)
     data_classification: list[str]
     known_vulnerabilities: list[str]  # enriched CVEs
 
@@ -213,12 +213,35 @@ class StaticThreatModelGenerator:
 
         # Deployment → infrastructure surface
         deploy = manifest.deployment
-        if deploy.get("compute"):
-            region = deploy.get("region", "")
-            surfaces.append(
-                f"{deploy.get('cloud', '')} {deploy['compute']} deployment"
-                + (f" ({region})" if region else "")
-            )
+        cloud = str(deploy.get("cloud", ""))
+        region = str(deploy.get("region", ""))
+
+        compute = deploy.get("compute", [])
+        if isinstance(compute, list):
+            for c in compute:
+                if isinstance(c, dict):
+                    surfaces.append(f"{cloud} {c.get('type', '?')} ({c.get('description', '')})")
+        elif isinstance(compute, str):
+            surfaces.append(f"{cloud} {compute} deployment ({region})")
+
+        databases = deploy.get("databases", [])
+        if isinstance(databases, list):
+            for db in databases:
+                if isinstance(db, dict):
+                    surfaces.append(f"{db.get('type', '?')} database ({db.get('description', '')})")
+
+        storage = deploy.get("storage", [])
+        if isinstance(storage, list):
+            for s in storage:
+                if isinstance(s, dict):
+                    surfaces.append(f"{s.get('type', '?')} storage ({s.get('description', '')})")
+
+        networking = deploy.get("networking", [])
+        if isinstance(networking, list):
+            for n in networking:
+                if isinstance(n, dict):
+                    if "gateway" in str(n.get("type", "")).lower() or "alb" in str(n.get("type", "")).lower():
+                        surfaces.append(f"{n.get('type', '?')} — internet-facing ({n.get('description', '')})")
 
         # Supply chain
         if manifest.integrations:

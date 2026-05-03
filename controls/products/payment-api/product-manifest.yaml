@@ -9,14 +9,6 @@ product:
   jurisdiction:
     - JP
 
-  # ── Cloud-native deployment architecture ──
-  # Each service type drives different security controls:
-  #   compute    → container security, RBAC, pod policies
-  #   databases  → encryption at rest, access control, backups
-  #   storage    → bucket policies, public access block
-  #   networking → WAF, TLS, ingress rules
-  #   messaging  → queue encryption, dead letter config
-  #   serverless → function permissions, env var secrets
   deployment:
     cloud: AWS
     region: ap-northeast-1

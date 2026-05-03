@@ -5,7 +5,7 @@
   "properties": {
     "product": {
       "type": "object",
-      "required": ["name", "description", "data_classification", "jurisdiction", "deployment"],
+      "required": ["name", "description", "data_classification", "jurisdiction"],
       "properties": {
         "name": { "type": "string" },
         "description": { "type": "string" },
@@ -19,36 +19,15 @@
         },
         "deployment": {
           "type": "object",
-          "required": ["cloud", "region"],
           "properties": {
             "cloud": { "type": "string" },
             "region": { "type": "string" },
-            "compute": {
-              "oneOf": [
-                { "type": "string" },
-                { "type": "array", "items": { "type": "object" } }
-              ]
-            },
-            "databases": {
-              "type": "array",
-              "items": { "type": "object" }
-            },
-            "storage": {
-              "type": "array",
-              "items": { "type": "object" }
-            },
-            "networking": {
-              "type": "array",
-              "items": { "type": "object" }
-            },
-            "messaging": {
-              "type": "array",
-              "items": { "type": "object" }
-            },
-            "observability": {
-              "type": "array",
-              "items": { "type": "object" }
-            }
+            "compute": { "oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "object"}}] },
+            "databases": { "type": "array", "items": { "type": "object" } },
+            "storage": { "type": "array", "items": { "type": "object" } },
+            "networking": { "type": "array", "items": { "type": "object" } },
+            "messaging": { "type": "array", "items": { "type": "object" } },
+            "observability": { "type": "array", "items": { "type": "object" } }
           }
         },
         "integrations": {

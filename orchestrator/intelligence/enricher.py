@@ -127,8 +127,9 @@ class VulnerabilityEnricher:
         parts = [manifest.name]
         if "PCI" in manifest.data_classification:
             parts.append("PCI scope")
-        if manifest.deployment.get("type"):
-            parts.append(manifest.deployment["type"])
+        cloud = manifest.deployment.get("cloud")
+        if cloud:
+            parts.append(str(cloud))
         if manifest.jurisdiction:
             parts.append(", ".join(manifest.jurisdiction))
         return ", ".join(parts)
