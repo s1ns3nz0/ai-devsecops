@@ -137,12 +137,6 @@ def _format_architecture_context(manifest: ProductManifest) -> str:
             lines.append(f"  {dim.capitalize()}: {level}")
 
     # Mission Context (MbCRA)
-    mission = manifest.deployment.get("mission")
-    if not mission:
-        # Check top-level mission (may be parsed as separate key by some YAML loaders)
-        mission = getattr(manifest, "_raw", {}).get("mission")
-
-    # Try reading mission from the raw manifest data
     _format_mission_context(lines, manifest)
 
     return "\n".join(lines) if lines else "No architecture details provided."
@@ -154,14 +148,8 @@ def _format_mission_context(lines: list[str], manifest: ProductManifest) -> None
     Reads mission data from the deployment dict or manifest attributes.
     This gives the AI business context to produce mission-relevant narratives.
     """
-    # Mission may be stored in deployment or as a top-level manifest attribute
-    mission: dict[str, object] | None = None
-    if isinstance(manifest.deployment.get("mission"), dict):
-        mission = manifest.deployment["mission"]  # type: ignore[assignment]
-
-    # Also check if there's a 'mission' key at the product level
-    # (YAML parser may put it in deployment since it's under product)
-    if mission is None:
+    mission = manifest.mission
+    if not mission:
         return
 
     lines.append("")

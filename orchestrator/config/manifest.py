@@ -34,7 +34,8 @@ def load_manifest(path: str) -> ProductManifest:
         description=product["description"],
         data_classification=product["data_classification"],
         jurisdiction=product["jurisdiction"],
-        deployment=product["deployment"],
+        deployment=product.get("deployment", {}),
         integrations=product.get("integrations", []),
+        mission=product.get("mission", {}),
         impact_levels=impact_levels,
     )
