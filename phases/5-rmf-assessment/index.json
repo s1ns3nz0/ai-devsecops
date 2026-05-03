@@ -23,7 +23,7 @@
       "name": "ai-risk-pipeline",
       "status": "completed",
       "started_at": "2026-05-03T16:26:19+0900",
-      "completed_at": "2026-05-03T17:00:00+0900",
+      "completed_at": "2026-05-03T16:32:55+0900",
       "summary": "Two-stage AI risk pipeline (RiskAssessmentPipeline + StaticRiskAssessmentPipeline) with Haiku filter → Sonnet SP 800-30 assessment, static fallback, and 8 unit tests"
     },
     {
