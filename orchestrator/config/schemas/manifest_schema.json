@@ -30,6 +30,14 @@
             "observability": { "type": "array", "items": { "type": "object" } }
           }
         },
+        "impact_levels": {
+          "type": "object",
+          "properties": {
+            "confidentiality": { "type": "string", "enum": ["low", "moderate", "high"] },
+            "integrity": { "type": "string", "enum": ["low", "moderate", "high"] },
+            "availability": { "type": "string", "enum": ["low", "moderate", "high"] }
+          }
+        },
         "integrations": {
           "type": "array",
           "items": { "type": "string" }

@@ -18,6 +18,9 @@ from orchestrator.controls.repository import ControlsRepository
 from orchestrator.evidence.export import EvidenceExporter
 from orchestrator.evidence.jsonl import JsonlWriter
 from orchestrator.gate.threshold import ThresholdEvaluator
+from orchestrator.rmf.poam import AuthorizationEngine, POAMGenerator
+from orchestrator.rmf.sar import SARGenerator
+from orchestrator.rmf.static_pipeline import StaticRiskAssessmentPipeline
 from orchestrator.scanners.control_mapper import ControlMapper
 from orchestrator.scanners.runner import ScannerRunner
 from orchestrator.sigma.engine import SigmaEngine
@@ -390,6 +393,194 @@ def assess(
 
     if not gate.passed:
         sys.exit(1)
+
+
+@cli.command("risk-assess")
+@click.argument("target_path")
+@click.option("--product", required=True, help="Product name")
+@click.option("--trigger", default="pre_merge", type=click.Choice(["pre_merge", "pre_deploy", "periodic"]))
+@click.option("--output", default="output", help="Output directory for reports")
+@click.option("--format", "fmt", default="yaml", type=click.Choice(["yaml", "json"]))
+def risk_assess(target_path: str, product: str, trigger: str, output: str, fmt: str) -> None:
+    """Run full NIST SP 800-30 risk assessment with RMF activities.
+
+    Produces:
+    1. SP 800-30 Risk Assessment Report
+    2. Security Assessment Report (SAR)
+    3. Plan of Action & Milestones (POA&M)
+    4. Authorization Decision (ATO/DATO/ATO-with-conditions)
+    """
+    import json as json_mod
+    from dataclasses import asdict
+    from typing import Any
+
+    from orchestrator.gate.combined import CombinedGateEvaluator
+    from orchestrator.gate.opa import OpaEvaluator
+    from orchestrator.intelligence.models import EnrichedVulnerability
+
+    prod_dir = _PROJECT_ROOT / "controls" / "products" / product
+    output_dir = Path(output)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    ext = "json" if fmt == "json" else "yaml"
+
+    # [1/7] Load configuration
+    click.echo("[1/7] Loading configuration")
+    manifest = load_manifest(str(prod_dir / "product-manifest.yaml"))
+    profile = load_profile(str(prod_dir / "risk-profile.yaml"))
+
+    repo = ControlsRepository(
+        baselines_dir=str(_PROJECT_ROOT / "controls" / "baselines"),
+        tier_mappings_path=str(_PROJECT_ROOT / "controls" / "tier-mappings.yaml"),
+    )
+    repo.load_all()
+
+    assessor = get_assessor(repo)
+    tier = assessor.categorize(manifest)
+    controls = select_baseline(repo, manifest, tier)
+
+    cia = manifest.impact_levels
+    click.echo(f"      Product: {product} | Tier: {tier.value}")
+    click.echo(
+        f"      CIA: C={cia.get('confidentiality', 'moderate')} "
+        f"I={cia.get('integrity', 'moderate')} "
+        f"A={cia.get('availability', 'moderate')}"
+    )
+
+    # [2/7] Running scanners + EPSS
+    click.echo("\n[2/7] Running scanners + EPSS")
+    mapper = ControlMapper(repo)
+    scanners = _build_scanners(mapper)
+    runner = ScannerRunner(scanners)
+    findings = runner.run_all(target_path)
+    for f in findings:
+        f.product = product
+
+    # EPSS enrichment (best-effort)
+    enriched_vulns: list[EnrichedVulnerability] = []
+    cve_findings = [f for f in findings if f.rule_id.startswith("CVE-")]
+    epss_enriched_count = 0
+    try:
+        from orchestrator.intelligence.enricher import VulnerabilityEnricher
+        from orchestrator.intelligence.epss import EpssClient
+
+        epss_client = EpssClient()
+        enricher = VulnerabilityEnricher(epss_client, mapper)
+        enriched_vulns = enricher.enrich(findings, manifest)
+        epss_enriched_count = sum(1 for v in enriched_vulns if v.epss_score is not None)
+    except Exception:
+        pass
+
+    click.echo(f"      Findings: {len(findings)} | EPSS enriched: {epss_enriched_count}/{len(cve_findings)}")
+
+    # [3/7] SP 800-30 Risk Assessment
+    click.echo("\n[3/7] SP 800-30 Risk Assessment (static mode)")
+    pipeline = StaticRiskAssessmentPipeline()
+    sp800_report = pipeline.run(
+        findings=findings,
+        enriched_vulns=enriched_vulns,
+        manifest=manifest,
+        controls=controls,
+        trigger=trigger,
+    )
+
+    click.echo(f"      Threat sources: {len(sp800_report.threat_sources)} identified")
+    click.echo(f"      Threat events: {len(sp800_report.threat_events)} identified")
+    if sp800_report.risk_determinations:
+        click.echo("      Risk determinations:")
+        level_counts: dict[str, int] = {}
+        for rd in sp800_report.risk_determinations:
+            level_counts[rd.risk_level.upper()] = level_counts.get(rd.risk_level.upper(), 0) + 1
+        for level, count in sorted(level_counts.items()):
+            click.echo(f"        {level}: {count}")
+
+    # Gate evaluation (needed for SAR + Authorization)
+    threshold_eval = ThresholdEvaluator(profile)
+    opa_eval = OpaEvaluator(str(_PROJECT_ROOT / "rego" / "gates"))
+    combined = CombinedGateEvaluator(threshold_eval, opa_eval)
+    context: dict[str, object] = {
+        "product": product,
+        "tier": tier.value,
+        "frameworks": profile.frameworks,
+        "findings_count": {
+            s: sum(1 for f in findings if f.severity == s)
+            for s in ["critical", "high", "medium", "low"]
+        },
+        "pci_scope_count": sum(
+            1 for f in findings if any(c.startswith("PCI-DSS") for c in f.control_ids)
+        ),
+        "secrets_count": sum(1 for f in findings if f.source == "gitleaks"),
+    }
+    gate = combined.evaluate(findings, tier, context)
+
+    # [4/7] Security Assessment Report (SAR)
+    click.echo("\n[4/7] Security Assessment Report (SAR)")
+    sar_gen = SARGenerator(repo)
+    sar = sar_gen.generate(
+        product=product,
+        findings=findings,
+        gate_decision=gate,
+        risk_report=sp800_report,
+    )
+    click.echo(f"      Controls assessed: {sar.total_controls}")
+    click.echo(f"      Satisfied: {sar.satisfied}")
+    click.echo(f"      Other-than-satisfied: {sar.other_than_satisfied}")
+    click.echo(f"      Not assessed: {sar.not_assessed}")
+    click.echo(f"      Coverage: {sar.coverage_percentage}%")
+
+    # [5/7] Plan of Action & Milestones (POA&M)
+    click.echo("\n[5/7] Plan of Action & Milestones (POA&M)")
+    poam_gen = POAMGenerator()
+    poam_items = poam_gen.generate(
+        findings=findings,
+        risk_report=sp800_report,
+        gate_decision=gate,
+    )
+
+    deadline_counts: dict[str, int] = {}
+    for item in poam_items:
+        label = f"{item.severity}"
+        deadline_counts[label] = deadline_counts.get(label, 0) + 1
+
+    click.echo(f"      Items created: {len(poam_items)}")
+    for label, count in sorted(deadline_counts.items()):
+        click.echo(f"        {label}: {count}")
+
+    # [6/7] Authorization Decision
+    click.echo("\n[6/7] Authorization Decision")
+    auth_engine = AuthorizationEngine()
+    auth_decision = auth_engine.decide(
+        gate_decision=gate,
+        poam_items=poam_items,
+    )
+    click.echo(f"      Decision: {auth_decision.decision}")
+    click.echo(f"      Reason: {auth_decision.reasoning}")
+
+    # [7/7] Export reports
+    click.echo("\n[7/7] Reports exported")
+
+    def _serialize(obj: Any) -> dict[str, Any]:
+        if hasattr(obj, "__dataclass_fields__"):
+            return asdict(obj)
+        return {}
+
+    def _write_report(name: str, data: dict[str, Any]) -> None:
+        path = output_dir / f"{name}-{product}.{ext}"
+        if fmt == "json":
+            path.write_text(json_mod.dumps(data, indent=2, default=str))
+        else:
+            path.write_text(yaml.dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False))
+        click.echo(f"      {path}")
+
+    _write_report("sp800-30", _serialize(sp800_report))
+    _write_report("sar", _serialize(sar))
+    _write_report("poam", {
+        "product": product,
+        "total_items": len(poam_items),
+        "items": [_serialize(item) for item in poam_items],
+    })
+    _write_report("authorization", _serialize(auth_decision))
+
+    click.echo("\n\u2713 RMF assessment complete.")
 
 
 @cli.command(name="export")

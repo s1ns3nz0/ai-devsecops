@@ -24,11 +24,18 @@ def load_manifest(path: str) -> ProductManifest:
     jsonschema.validate(data, schema)
 
     product = data["product"]
+    impact_levels = product.get("impact_levels", {
+        "confidentiality": "moderate",
+        "integrity": "moderate",
+        "availability": "moderate",
+    })
     return ProductManifest(
         name=product["name"],
         description=product["description"],
         data_classification=product["data_classification"],
         jurisdiction=product["jurisdiction"],
-        deployment=product["deployment"],
+        deployment=product.get("deployment", {}),
         integrations=product.get("integrations", []),
+        mission=product.get("mission", {}),
+        impact_levels=impact_levels,
     )

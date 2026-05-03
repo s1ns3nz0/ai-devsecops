@@ -2,11 +2,55 @@
   "project": "Compliance-Driven AI Risk Platform",
   "phase": "5-rmf-assessment",
   "steps": [
-    { "step": 0, "name": "cia-impact-levels", "status": "pending" },
-    { "step": 1, "name": "sp800-30-models", "status": "pending" },
-    { "step": 2, "name": "ai-risk-pipeline", "status": "pending" },
-    { "step": 3, "name": "sar-report", "status": "pending" },
-    { "step": 4, "name": "poam-authorization", "status": "pending" },
-    { "step": 5, "name": "cli-integration", "status": "pending" }
-  ]
+    {
+      "step": 0,
+      "name": "cia-impact-levels",
+      "status": "completed",
+      "started_at": "2026-05-03T16:22:00+0900",
+      "summary": "FIPS 199 CIA impact levels added to ProductManifest with schema validation, tier elevation logic, and AI prompt integration",
+      "completed_at": "2026-05-03T16:24:08+0900"
+    },
+    {
+      "step": 1,
+      "name": "sp800-30-models",
+      "status": "completed",
+      "started_at": "2026-05-03T16:24:08+0900",
+      "completed_at": "2026-05-03T16:26:19+0900",
+      "summary": "SP 800-30 Rev 1 data models (ThreatSource, ThreatEvent, LikelihoodAssessment, ImpactAssessment, RiskDetermination, RiskResponse, SP80030Report) with 13 unit tests"
+    },
+    {
+      "step": 2,
+      "name": "ai-risk-pipeline",
+      "status": "completed",
+      "started_at": "2026-05-03T16:26:19+0900",
+      "completed_at": "2026-05-03T16:32:55+0900",
+      "summary": "Two-stage AI risk pipeline (RiskAssessmentPipeline + StaticRiskAssessmentPipeline) with Haiku filter → Sonnet SP 800-30 assessment, static fallback, and 8 unit tests"
+    },
+    {
+      "step": 3,
+      "name": "sar-report",
+      "status": "completed",
+      "started_at": "2026-05-03T16:32:55+0900",
+      "completed_at": "2026-05-03T16:37:07+0900",
+      "summary": "SARGenerator with ControlAssessment/SecurityAssessmentReport dataclasses, per-control assessment logic (satisfied/other-than-satisfied/not-assessed), coverage calculation, and ATO/DATO recommendation from gate decision — 10 unit tests"
+    },
+    {
+      "step": 4,
+      "name": "poam-authorization",
+      "status": "completed",
+      "started_at": "2026-05-03T16:37:07+0900",
+      "completed_at": "2026-05-03T16:39:58+0900",
+      "summary": "POAMGenerator with severity-based deadlines (7/30/90/180 days) and 4 milestones per item, AuthorizationEngine with deterministic ATO/DATO/ATO-with-conditions from gate+POA&M+overrides — 8 unit tests"
+    },
+    {
+      "step": 5,
+      "name": "cli-integration",
+      "status": "completed",
+      "started_at": "2026-05-03T16:39:58+0900",
+      "completed_at": "2026-05-03T16:46:34+0900",
+      "summary": "risk-assess CLI command producing 4 reports (SP 800-30, SAR, POA&M, Authorization) with YAML/JSON output, static mode fallback, ADR-013 — 7 unit tests"
+    }
+  ],
+  "created_at": "2026-05-03T16:22:00+0900",
+  "completed_at": "2026-05-03T16:46:34+0900"
 }
