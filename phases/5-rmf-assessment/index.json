@@ -39,7 +39,7 @@
       "name": "poam-authorization",
       "status": "completed",
       "started_at": "2026-05-03T16:37:07+0900",
-      "completed_at": "2026-05-03T17:00:00+0900",
+      "completed_at": "2026-05-03T16:39:58+0900",
       "summary": "POAMGenerator with severity-based deadlines (7/30/90/180 days) and 4 milestones per item, AuthorizationEngine with deterministic ATO/DATO/ATO-with-conditions from gate+POA&M+overrides — 8 unit tests"
     },
     {
