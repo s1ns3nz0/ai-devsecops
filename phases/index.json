@@ -24,6 +24,10 @@
       "dir": "4-framework-importer",
       "status": "completed",
       "completed_at": "2026-05-03T15:20:53+0900"
+    },
+    {
+      "dir": "5-rmf-assessment",
+      "status": "pending"
     }
   ]
 }
