@@ -7,7 +7,8 @@
       "name": "cia-impact-levels",
       "status": "completed",
       "started_at": "2026-05-03T16:22:00+0900",
-      "summary": "FIPS 199 CIA impact levels added to ProductManifest with schema validation, tier elevation logic, and AI prompt integration"
+      "summary": "FIPS 199 CIA impact levels added to ProductManifest with schema validation, tier elevation logic, and AI prompt integration",
+      "completed_at": "2026-05-03T16:24:08+0900"
     },
     {
       "step": 1,
