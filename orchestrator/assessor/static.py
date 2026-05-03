@@ -4,10 +4,15 @@ from __future__ import annotations
 
 import itertools
 from datetime import datetime, timezone
+from pathlib import Path
+
+import yaml
 
 from orchestrator.controls.models import Control
 from orchestrator.scoring.risk import compute_risk_score
 from orchestrator.types import Finding, ProductManifest, RiskReport, RiskTier
+
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 _REPORT_COUNTER = itertools.count(1)
 
@@ -42,20 +47,76 @@ def _gate_recommendation(score: float) -> str:
 class StaticRiskAssessor:
     """AI 없이 동작하는 risk assessor. Deterministic 로직만 사용한다."""
 
+    def __init__(self, compliance_mappings_path: str | None = None) -> None:
+        self._mappings: dict[str, dict[str, object]] = self._load_compliance_mappings(compliance_mappings_path)
+
+    @staticmethod
+    def _load_compliance_mappings(path: str | None = None) -> dict[str, dict[str, object]]:
+        """Load compliance-mappings.yaml. Falls back to defaults if missing."""
+        if path is None:
+            path = str(_PROJECT_ROOT / "controls" / "compliance-mappings.yaml")
+        try:
+            with open(path) as f:
+                data = yaml.safe_load(f)
+            return data if isinstance(data, dict) else {}
+        except FileNotFoundError:
+            # Fallback: no mappings → everything is LOW
+            return {
+                "data_classifications": {},
+                "jurisdictions": {},
+                "tier_thresholds": {"critical": 3, "high": 2, "medium": 1, "low": 0},
+            }
+
     def categorize(self, manifest: ProductManifest) -> RiskTier:
-        """Categorization 규칙 (deterministic)."""
-        classifications = {c.upper() for c in manifest.data_classification}
-        jurisdictions = {j.upper() for j in manifest.jurisdiction}
+        """Categorization driven by compliance-mappings.yaml (deterministic).
 
-        has_pci = "PCI" in classifications
-        has_pii_financial = "PII-FINANCIAL" in classifications
-        has_jp = "JP" in jurisdictions
+        Logic:
+        1. Collect required frameworks from data_classification mappings
+        2. Collect additional frameworks from jurisdiction mappings
+        3. Count distinct frameworks
+        4. Map count to tier via tier_thresholds
+        """
+        required_frameworks: set[str] = set()
 
-        if has_pci and has_jp:
+        # Data classification → frameworks
+        class_mappings: dict[str, object] = self._mappings.get("data_classifications", {})
+        for dc in manifest.data_classification:
+            key = dc.upper()
+            entry = class_mappings.get(key, class_mappings.get(dc, {}))
+            if isinstance(entry, dict):
+                fws = entry.get("frameworks", [])
+                if isinstance(fws, list):
+                    required_frameworks.update(str(fw) for fw in fws)
+
+        # Jurisdiction → additional frameworks
+        jurisdiction_mappings: dict[str, object] = self._mappings.get("jurisdictions", {})
+        for j in manifest.jurisdiction:
+            key = j.upper()
+            entry = jurisdiction_mappings.get(key, jurisdiction_mappings.get(j, {}))
+            if isinstance(entry, dict):
+                fws = entry.get("frameworks", [])
+                if isinstance(fws, list):
+                    required_frameworks.update(str(fw) for fw in fws)
+
+        # Count distinct frameworks → tier
+        thresholds: dict[str, object] = self._mappings.get("tier_thresholds", {})
+        count = len(required_frameworks)
+
+        def _int(val: object, default: int) -> int:
+            try:
+                return int(str(val))
+            except (ValueError, TypeError):
+                return default
+
+        critical_threshold = _int(thresholds.get("critical", 3), 3)
+        high_threshold = _int(thresholds.get("high", 2), 2)
+        medium_threshold = _int(thresholds.get("medium", 1), 1)
+
+        if count >= critical_threshold:
             return RiskTier.CRITICAL
-        if has_pci:
+        if count >= high_threshold:
             return RiskTier.HIGH
-        if has_pii_financial:
+        if count >= medium_threshold:
             return RiskTier.MEDIUM
         return RiskTier.LOW
 
