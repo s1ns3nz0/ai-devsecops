@@ -49,6 +49,11 @@ product:
         log_retention_days: 365
         description: "Application + audit logs"
 
+  impact_levels:
+    confidentiality: high      # PCI cardholder data exposure → high
+    integrity: high            # Payment amount tampering → high
+    availability: moderate     # Service disruption → moderate
+
   integrations:
     - external-payment-gateway
     - internal-user-db

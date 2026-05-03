@@ -128,6 +128,14 @@ def _format_architecture_context(manifest: ProductManifest) -> str:
     if manifest.integrations:
         lines.append(f"External integrations: {', '.join(manifest.integrations)}")
 
+    # FIPS 199 Impact Levels
+    if manifest.impact_levels:
+        lines.append("")
+        lines.append("Impact Levels (FIPS 199):")
+        for dim in ("confidentiality", "integrity", "availability"):
+            level = manifest.impact_levels.get(dim, "moderate").upper()
+            lines.append(f"  {dim.capitalize()}: {level}")
+
     return "\n".join(lines) if lines else "No architecture details provided."
 
 

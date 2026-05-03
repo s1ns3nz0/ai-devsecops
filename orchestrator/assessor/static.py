@@ -113,12 +113,25 @@ class StaticRiskAssessor:
         medium_threshold = _int(thresholds.get("medium", 1), 1)
 
         if count >= critical_threshold:
-            return RiskTier.CRITICAL
-        if count >= high_threshold:
-            return RiskTier.HIGH
-        if count >= medium_threshold:
-            return RiskTier.MEDIUM
-        return RiskTier.LOW
+            tier = RiskTier.CRITICAL
+        elif count >= high_threshold:
+            tier = RiskTier.HIGH
+        elif count >= medium_threshold:
+            tier = RiskTier.MEDIUM
+        else:
+            tier = RiskTier.LOW
+
+        # FIPS 199: all-high CIA elevates tier by one step (supplementary, not gate)
+        if all(
+            manifest.impact_levels.get(dim) == "high"
+            for dim in ("confidentiality", "integrity", "availability")
+        ):
+            _TIER_ORDER = [RiskTier.LOW, RiskTier.MEDIUM, RiskTier.HIGH, RiskTier.CRITICAL]
+            idx = _TIER_ORDER.index(tier)
+            if idx < len(_TIER_ORDER) - 1:
+                tier = _TIER_ORDER[idx + 1]
+
+        return tier
 
     def assess(
         self,

@@ -23,6 +23,12 @@ class ProductManifest:
     jurisdiction: list[str]
     deployment: dict[str, object]
     integrations: list[str] = field(default_factory=list)
+    # FIPS 199 impact levels (RMF Step 2)
+    impact_levels: dict[str, str] = field(default_factory=lambda: {
+        "confidentiality": "moderate",
+        "integrity": "moderate",
+        "availability": "moderate",
+    })
 
 
 @dataclass
