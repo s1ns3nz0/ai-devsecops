@@ -1,0 +1,9 @@
+{
+  "project": "Compliance-Driven AI Risk Platform",
+  "phase": "4-framework-importer",
+  "steps": [
+    { "step": 0, "name": "oscal-parser", "status": "pending" },
+    { "step": 1, "name": "scanner-mapper", "status": "pending" },
+    { "step": 2, "name": "cli-import", "status": "pending" }
+  ]
+}

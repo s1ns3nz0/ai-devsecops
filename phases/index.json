@@ -19,6 +19,10 @@
       "dir": "3-vuln-intelligence",
       "status": "completed",
       "completed_at": "2026-04-22T11:22:58+0900"
+    },
+    {
+      "dir": "4-framework-importer",
+      "status": "pending"
     }
   ]
 }
