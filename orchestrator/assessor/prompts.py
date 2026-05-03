@@ -136,7 +136,89 @@ def _format_architecture_context(manifest: ProductManifest) -> str:
             level = manifest.impact_levels.get(dim, "moderate").upper()
             lines.append(f"  {dim.capitalize()}: {level}")
 
+    # Mission Context (MbCRA)
+    mission = manifest.deployment.get("mission")
+    if not mission:
+        # Check top-level mission (may be parsed as separate key by some YAML loaders)
+        mission = getattr(manifest, "_raw", {}).get("mission")
+
+    # Try reading mission from the raw manifest data
+    _format_mission_context(lines, manifest)
+
     return "\n".join(lines) if lines else "No architecture details provided."
+
+
+def _format_mission_context(lines: list[str], manifest: ProductManifest) -> None:
+    """Format mission context for AI risk assessment (MbCRA).
+
+    Reads mission data from the deployment dict or manifest attributes.
+    This gives the AI business context to produce mission-relevant narratives.
+    """
+    # Mission may be stored in deployment or as a top-level manifest attribute
+    mission: dict[str, object] | None = None
+    if isinstance(manifest.deployment.get("mission"), dict):
+        mission = manifest.deployment["mission"]  # type: ignore[assignment]
+
+    # Also check if there's a 'mission' key at the product level
+    # (YAML parser may put it in deployment since it's under product)
+    if mission is None:
+        return
+
+    lines.append("")
+    lines.append("Mission Context (MbCRA):")
+
+    biz_func = mission.get("business_function", "")
+    if biz_func:
+        lines.append(f"  Business function: {biz_func}")
+
+    criticality = mission.get("criticality", "")
+    if criticality:
+        lines.append(f"  Criticality: {criticality}")
+
+    revenue = mission.get("revenue_impact", "")
+    if revenue:
+        lines.append(f"  Revenue impact if down: {revenue}")
+
+    users = mission.get("users_affected", "")
+    if users:
+        lines.append(f"  Users affected: {users}")
+
+    # SLA requirements
+    slas = mission.get("sla_requirements", [])
+    if isinstance(slas, list) and slas:
+        lines.append("  SLA requirements:")
+        for sla in slas:
+            if isinstance(sla, dict):
+                lines.append(f"    {sla.get('partner', '?')}: uptime {sla.get('uptime', '?')}, penalty {sla.get('penalty', '?')}")
+
+    # Recovery objectives
+    recovery = mission.get("recovery_objectives", {})
+    if isinstance(recovery, dict):
+        rto = recovery.get("rto", "")
+        rpo = recovery.get("rpo", "")
+        if rto or rpo:
+            lines.append(f"  Recovery: RTO={rto}, RPO={rpo}")
+
+    # Dependencies
+    deps = mission.get("dependencies", [])
+    if isinstance(deps, list) and deps:
+        lines.append("  Critical dependencies:")
+        for dep in deps:
+            if isinstance(dep, dict):
+                lines.append(f"    {dep.get('system', '?')} ({dep.get('criticality', '?')}): {dep.get('impact_if_unavailable', '')}")
+
+    # Mission impact scenarios
+    scenarios = mission.get("mission_impact_scenarios", {})
+    if isinstance(scenarios, dict) and scenarios:
+        lines.append("  Mission impact scenarios:")
+        for scenario_type, details in scenarios.items():
+            if isinstance(details, dict):
+                lines.append(f"    {scenario_type}:")
+                lines.append(f"      Impact: {details.get('business_impact', '?')}")
+                lines.append(f"      Estimated cost: {details.get('estimated_cost', '?')}")
+                stakeholders = details.get("affected_stakeholders", [])
+                if isinstance(stakeholders, list):
+                    lines.append(f"      Stakeholders: {', '.join(str(s) for s in stakeholders)}")
 
 
 def _format_findings_summary(findings: list[Finding]) -> str:

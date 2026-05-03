@@ -23,6 +23,8 @@ class ProductManifest:
     jurisdiction: list[str]
     deployment: dict[str, object]
     integrations: list[str] = field(default_factory=list)
+    # Mission context (MbCRA — connects technical risk to business impact)
+    mission: dict[str, object] = field(default_factory=dict)
     # FIPS 199 impact levels (RMF Step 2)
     impact_levels: dict[str, str] = field(default_factory=lambda: {
         "confidentiality": "moderate",
