@@ -254,17 +254,26 @@ class StaticThreatModelGenerator:
     ) -> list[ThreatScenario]:
         """Enriched CVEs에서 구체적 위협 시나리오 도출.
 
-        EPSS > 0.1인 CVE마다 시나리오 생성.
+        Scenario generation criteria:
+        - EPSS > 0.1: actively exploited → always generate
+        - EPSS unavailable + CVSS high/critical: generate based on severity
+        - EPSS <= 0.1 + CVSS medium/low: skip
         """
         scenarios: list[ThreatScenario] = []
         for i, vuln in enumerate(enriched_vulns):
-            if vuln.epss_score is None or vuln.epss_score <= 0.1:
-                continue
+            # Decide whether to generate a scenario
+            if vuln.epss_score is not None and vuln.epss_score > 0.1:
+                pass  # EPSS says actively exploited → generate
+            elif vuln.epss_score is None and vuln.priority in ("critical", "high"):
+                pass  # No EPSS data but CVSS is high/critical → generate
+            else:
+                continue  # Low risk → skip
 
+            epss_label = f"EPSS: {vuln.epss_score}" if vuln.epss_score is not None else "EPSS: N/A"
             mitre, stride = self._map_to_mitre(vuln)
             target = (
                 f"{vuln.package} {vuln.installed_version} "
-                f"({vuln.cve_id}, EPSS: {vuln.epss_score})"
+                f"({vuln.cve_id}, {epss_label})"
             )
 
             scenarios.append(
@@ -277,7 +286,7 @@ class StaticThreatModelGenerator:
                     target_component=target,
                     preconditions=[
                         f"Application uses {vuln.package} {vuln.installed_version}",
-                        f"Vulnerability {vuln.cve_id} is exploitable (EPSS: {vuln.epss_score})",
+                        f"Vulnerability {vuln.cve_id} is exploitable ({epss_label}, severity: {vuln.priority})",
                     ],
                     attack_steps=[
                         f"Identify {vuln.package} {vuln.installed_version} in target",
@@ -285,7 +294,7 @@ class StaticThreatModelGenerator:
                         f"Achieve {vuln.severity} impact",
                     ],
                     impact=f"Exploitation of {vuln.cve_id} in {vuln.package} ({vuln.severity})",
-                    likelihood="high" if vuln.epss_score > 0.3 else "medium",
+                    likelihood="high" if (vuln.epss_score or 0) > 0.3 else "medium",
                     severity=vuln.severity,
                     affected_controls=vuln.control_ids,
                     mitigation=f"Upgrade {vuln.package} to {vuln.fixed_version}",

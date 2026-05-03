@@ -105,6 +105,17 @@ class GrypeScanner:
             vuln_id = str(vuln.get("id", ""))
             severity = str(vuln.get("severity", "Unknown")).lower()
 
+            # Extract CVE ID from relatedVulnerabilities (Grype uses GHSA as primary)
+            cve_id = ""
+            related = match.get("relatedVulnerabilities", [])
+            if isinstance(related, list):
+                for rv in related:
+                    if isinstance(rv, dict):
+                        rid = str(rv.get("id", ""))
+                        if rid.startswith("CVE-"):
+                            cve_id = rid
+                            break
+
             artifact = match.get("artifact", {})
             file_path = ""
             pkg_name = ""
@@ -126,12 +137,14 @@ class GrypeScanner:
                 if isinstance(versions, list) and versions:
                     fixed_version = str(versions[0])
 
-            control_ids = self._control_mapper.map_finding("grype", vuln_id, severity=severity)
+            # Use CVE ID when available (EPSS needs CVE, not GHSA)
+            effective_id = cve_id if cve_id else vuln_id
+            control_ids = self._control_mapper.map_finding("grype", effective_id, severity=severity)
 
             findings.append(
                 Finding(
                     source="grype",
-                    rule_id=vuln_id,
+                    rule_id=effective_id,
                     severity=severity,
                     file=file_path,
                     line=0,
