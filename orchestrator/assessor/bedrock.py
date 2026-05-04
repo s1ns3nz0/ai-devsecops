@@ -21,6 +21,19 @@ _REPORT_COUNTER = itertools.count(1)
 _VALID_TIERS = {t.value for t in RiskTier}
 
 
+def _extract_json(raw: str) -> dict[str, object]:
+    """Extract JSON from AI response that may be wrapped in markdown code fences."""
+    text = raw.strip()
+    # Strip ```json ... ``` wrapper
+    if text.startswith("```"):
+        # Find the end of the first line (```json or ```)
+        first_newline = text.index("\n")
+        last_fence = text.rfind("```")
+        if last_fence > first_newline:
+            text = text[first_newline + 1:last_fence].strip()
+    return json.loads(text)  # type: ignore[no-any-return]
+
+
 def _generate_report_id() -> str:
     """RA-YYYY-MMDD-NNN 형식의 report ID 생성."""
     now = datetime.now(tz=timezone.utc)
@@ -71,8 +84,8 @@ class BedrockRiskAssessor:
         try:
             prompt = build_categorization_prompt(manifest)
             raw = self._client.invoke(prompt)
-            data = json.loads(raw)
-            tier_str = data["tier"].lower()
+            data = _extract_json(raw)
+            tier_str = str(data["tier"]).lower()
             if tier_str not in _VALID_TIERS:
                 raise ValueError(f"Invalid tier: {tier_str}")
             return RiskTier(tier_str)
@@ -120,12 +133,14 @@ class BedrockRiskAssessor:
                 trigger=trigger,
             )
             raw = self._client.invoke(prompt)
-            data = json.loads(raw)
+            data = _extract_json(raw)
 
-            narrative = data["narrative"]
-            gate_rec = data.get("gate_recommendation", "proceed")
-            insights = data.get("cross_signal_insights", [])
-            recs = data.get("recommendations", [])
+            narrative = str(data["narrative"])
+            gate_rec = str(data.get("gate_recommendation", "proceed"))
+            raw_insights = data.get("cross_signal_insights", [])
+            insights = [str(i) for i in raw_insights] if isinstance(raw_insights, list) else []
+            raw_recs = data.get("recommendations", [])
+            recs = [str(r) for r in raw_recs] if isinstance(raw_recs, list) else []
 
             return RiskReport(
                 id=_generate_report_id(),

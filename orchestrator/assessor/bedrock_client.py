@@ -46,12 +46,14 @@ class BedrockClient:
         self._client = self._create_client()
 
     def _create_client(self) -> Any:
-        """Lazy boto3 client creation."""
+        """Lazy boto3 client creation with extended timeout for large prompts."""
         import boto3
+        from botocore.config import Config
 
         return boto3.client(
             "bedrock-runtime",
             region_name=self._region,
+            config=Config(read_timeout=120, connect_timeout=10),
         )
 
     def _check_rate_limit(self) -> None:
