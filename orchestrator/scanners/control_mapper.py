@@ -33,6 +33,10 @@ class ControlMapper:
         self._gitleaks_controls: list[str] = []
         # sbom: [control_id] (SBOM generation evidence — maps when SBOM is produced)
         self._sbom_controls: list[str] = []
+        # zap: [(rule_pattern, control_id)] — similar to semgrep
+        self._zap_patterns: list[tuple[str, str]] = []
+        # zap: [(severity_threshold, control_id)] — fallback by severity
+        self._zap_thresholds: list[tuple[str, str]] = []
 
         for control in self._controls_repo.controls.values():
             for vm in control.verification_methods:
@@ -52,6 +56,13 @@ class ControlMapper:
 
                 elif vm.scanner == "sbom":
                     self._sbom_controls.append(control.id)
+
+                elif vm.scanner == "zap":
+                    if vm.rules:
+                        for rule_pattern in vm.rules:
+                            self._zap_patterns.append((rule_pattern, control.id))
+                    elif vm.severity_threshold:
+                        self._zap_thresholds.append((vm.severity_threshold, control.id))
 
     def map_finding(self, source: str, rule_id: str, severity: str | None = None) -> list[str]:
         """scanner name + rule_id → 해당하는 Control ID 목록.
@@ -73,6 +84,9 @@ class ControlMapper:
         if source == "sbom":
             return list(self._sbom_controls)
 
+        if source == "zap":
+            return self._match_zap(rule_id, severity)
+
         return []
 
     def _match_semgrep(self, rule_id: str) -> list[str]:
@@ -83,6 +97,25 @@ class ControlMapper:
             if control_id not in seen and fnmatch.fnmatch(rule_id, pattern):
                 matched.append(control_id)
                 seen.add(control_id)
+        return matched
+
+    def _match_zap(self, rule_id: str, severity: str | None = None) -> list[str]:
+        """ZAP alert를 rule pattern 또는 severity threshold로 매핑한다."""
+        matched: list[str] = []
+        seen: set[str] = set()
+        # First try rule-based matching
+        for pattern, control_id in self._zap_patterns:
+            if control_id not in seen and fnmatch.fnmatch(rule_id, pattern):
+                matched.append(control_id)
+                seen.add(control_id)
+        # If no rule match, fall back to severity threshold
+        if not matched and severity:
+            sev_level = _SEVERITY_ORDER.get(severity.lower(), 0)
+            for threshold, control_id in self._zap_thresholds:
+                threshold_level = _SEVERITY_ORDER.get(threshold.lower(), 0)
+                if control_id not in seen and sev_level >= threshold_level:
+                    matched.append(control_id)
+                    seen.add(control_id)
         return matched
 
     def _match_grype(self, severity: str | None) -> list[str]:

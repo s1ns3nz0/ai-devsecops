@@ -249,6 +249,76 @@ def _mock_bedrock_assess_response() -> str:
     })
 
 
+def _mock_per_finding_response(idx: int) -> str:
+    """Mock per-finding AI response for pipeline tests."""
+    te_id = f"TE-{idx + 1:03d}"
+    return json.dumps({
+        "threat_source": {
+            "id": f"TS-ADV-{idx + 1:03d}",
+            "type": "adversarial",
+            "name": "External attacker",
+            "capability": "high",
+            "intent": "Financial gain via cardholder data theft",
+            "targeting": "Targeted",
+        },
+        "threat_event": {
+            "id": te_id,
+            "description": "SQL injection via payment export endpoint",
+            "source_id": f"TS-ADV-{idx + 1:03d}",
+            "mitre_technique": "T1190",
+            "relevance": "confirmed",
+            "cve_id": "",
+            "target_component": "src/api/export.py",
+        },
+        "likelihood": {
+            "initiation_likelihood": "high",
+            "impact_likelihood": "high",
+            "overall_likelihood": "high",
+            "epss_score": 0.35,
+            "predisposing_conditions": ["internet-facing", "PCI scope"],
+            "evidence": "Critical finding in PCI scope",
+        },
+        "impact": {
+            "impact_type": "harm to operations",
+            "cia_impact": {"confidentiality": "high", "integrity": "high", "availability": "moderate"},
+            "severity": "high",
+            "compliance_impact": ["PCI-DSS-6.3.1", "ASVS-V5.3.4"],
+            "business_impact": "Cardholder data exposure",
+            "evidence": "PCI-scoped API",
+        },
+        "risk_determination": {
+            "threat_event_id": te_id,
+            "likelihood": "high",
+            "impact": "high",
+            "risk_level": "high",
+            "risk_score": 81.0,
+        },
+        "risk_response": {
+            "risk_determination_id": te_id,
+            "response_type": "mitigate",
+            "description": "Fix finding",
+            "milestones": ["Identify", "Fix", "Verify"],
+            "deadline": "2026-06-01",
+            "responsible": "Security Engineer",
+        },
+        "narrative": f"Finding {idx} poses high risk.",
+    })
+
+
+def _mock_summary_response() -> str:
+    """Mock summary synthesis AI response."""
+    return json.dumps({
+        "executive_summary": "Payment API faces critical risk from SQL injection and exposed credentials.",
+        "cross_signal_insights": ["SQL injection + secrets create escalation path."],
+        "overall_risk_posture": "high",
+        "recommendations": [
+            "Fix SQL injection immediately",
+            "Rotate exposed AWS credentials",
+            "Enable S3 encryption",
+        ],
+    })
+
+
 # --- Tests ---
 
 
@@ -257,10 +327,11 @@ class TestPipelineProducesSP80030Report:
 
     def test_pipeline_produces_sp800_30_report(self) -> None:
         mock_client = MagicMock()
-        mock_client.invoke.side_effect = [
-            _mock_bedrock_filter_response(),
-            _mock_bedrock_assess_response(),
-        ]
+        # Filter step uses invoke (selects indices [0,1,2]); assess uses stream_with_cache
+        mock_client.invoke.return_value = _mock_bedrock_filter_response()
+        mock_client.stream_with_cache.side_effect = [
+            _mock_per_finding_response(i) for i in range(3)
+        ] + [_mock_summary_response()]
 
         pipeline = RiskAssessmentPipeline(bedrock_client=mock_client)
         report = pipeline.run(
@@ -367,10 +438,10 @@ class TestAssessFollowsSP80030Structure:
 
     def test_assess_follows_sp800_30_structure(self) -> None:
         mock_client = MagicMock()
-        mock_client.invoke.side_effect = [
-            _mock_bedrock_filter_response(),
-            _mock_bedrock_assess_response(),
-        ]
+        mock_client.invoke.return_value = _mock_bedrock_filter_response()
+        mock_client.stream_with_cache.side_effect = [
+            _mock_per_finding_response(i) for i in range(3)
+        ] + [_mock_summary_response()]
 
         pipeline = RiskAssessmentPipeline(bedrock_client=mock_client)
         report = pipeline.run(
@@ -428,10 +499,10 @@ class TestAIResponseParsedToModels:
 
     def test_ai_response_parsed_to_models(self) -> None:
         mock_client = MagicMock()
-        mock_client.invoke.side_effect = [
-            _mock_bedrock_filter_response(),
-            _mock_bedrock_assess_response(),
-        ]
+        mock_client.invoke.return_value = _mock_bedrock_filter_response()
+        mock_client.stream_with_cache.side_effect = [
+            _mock_per_finding_response(i) for i in range(3)
+        ] + [_mock_summary_response()]
 
         pipeline = RiskAssessmentPipeline(bedrock_client=mock_client)
         report = pipeline.run(

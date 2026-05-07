@@ -1,0 +1,49 @@
+# Dependency-Track — SBOM management and continuous vulnerability monitoring
+# Usage: docker compose -f docker-compose.dtrack.yml up -d
+
+services:
+  dtrack-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: dtrack
+      POSTGRES_USER: dtrack
+      POSTGRES_PASSWORD: dtrack
+    volumes:
+      - dtrack-postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dtrack"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  dtrack-apiserver:
+    image: dependencytrack/apiserver:4.12.3
+    depends_on:
+      dtrack-postgres:
+        condition: service_healthy
+    environment:
+      ALPINE_DATABASE_MODE: external
+      ALPINE_DATABASE_URL: jdbc:postgresql://dtrack-postgres:5432/dtrack
+      ALPINE_DATABASE_DRIVER: org.postgresql.Driver
+      ALPINE_DATABASE_USERNAME: dtrack
+      ALPINE_DATABASE_PASSWORD: dtrack
+    volumes:
+      - dtrack-data:/data
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8081:8080"
+
+  dtrack-frontend:
+    image: dependencytrack/frontend:4.12.3
+    depends_on:
+      - dtrack-apiserver
+    environment:
+      API_BASE_URL: http://localhost:8081
+    ports:
+      - "127.0.0.1:8082:8080"
+    restart: unless-stopped
+
+volumes:
+  dtrack-postgres-data:
+  dtrack-data:

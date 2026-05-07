@@ -34,6 +34,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      id-token: write  # Required for AWS OIDC federation
 
     steps:
       - uses: actions/checkout@v4
@@ -219,6 +220,56 @@ jobs:
             output/threat-model-*.yaml
             assessment-output.txt
           retention-days: 365
+
+      # ── DASHBOARD S3 UPLOAD ──
+      - name: Configure AWS credentials
+        if: always()
+        continue-on-error: true
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-arn: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ap-northeast-1
+
+      - name: Upload dashboard to S3
+        if: always()
+        continue-on-error: true
+        env:
+          DASHBOARD_BUCKET: ${{ secrets.DASHBOARD_BUCKET }}
+        run: |
+          if [ -z "${DASHBOARD_BUCKET}" ] || [ ! -d output/dashboard ]; then
+            echo "Skipping S3 upload: bucket not configured or no dashboard output"
+            exit 0
+          fi
+
+          TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+          # Upload timestamped run (immutable history)
+          aws s3 sync output/dashboard/ "s3://${DASHBOARD_BUCKET}/runs/${TIMESTAMP}/" \
+            --cache-control "public, max-age=31536000, immutable"
+
+          # Update latest (short cache for live dashboard)
+          aws s3 sync output/dashboard/ "s3://${DASHBOARD_BUCKET}/latest/" \
+            --cache-control "public, max-age=60"
+
+          # Update runs index (list all runs for timeline)
+          aws s3api list-objects-v2 \
+            --bucket "${DASHBOARD_BUCKET}" \
+            --prefix "runs/" \
+            --delimiter "/" \
+            --query "CommonPrefixes[].Prefix" \
+            --output json | python3 -c "
+          import sys, json
+          prefixes = json.load(sys.stdin) or []
+          runs = [p.replace('runs/', '').rstrip('/') for p in prefixes if p != 'runs/']
+          runs.sort(reverse=True)
+          json.dump({'runs': runs[:100], 'total': len(runs)}, sys.stdout, indent=2)
+          " > /tmp/runs-index.json
+
+          aws s3 cp /tmp/runs-index.json "s3://${DASHBOARD_BUCKET}/runs/index.json" \
+            --cache-control "public, max-age=60" \
+            --content-type "application/json"
+
+          echo "Dashboard uploaded: s3://${DASHBOARD_BUCKET}/runs/${TIMESTAMP}/"
 
       - name: Enforce gate decision
         if: steps.gate.outcome == 'failure'

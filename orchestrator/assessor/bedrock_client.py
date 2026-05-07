@@ -53,7 +53,7 @@ class BedrockClient:
         return boto3.client(
             "bedrock-runtime",
             region_name=self._region,
-            config=Config(read_timeout=120, connect_timeout=10),
+            config=Config(read_timeout=300, connect_timeout=10),
         )
 
     def _check_rate_limit(self) -> None:
@@ -155,6 +155,80 @@ class BedrockClient:
             self._log_response(response_body, elapsed, cached=True)
 
             return response_body["content"][0]["text"]  # type: ignore[no-any-return]
+
+        except (BedrockInvocationError, BedrockRateLimitError):
+            raise
+        except Exception as exc:
+            raise self._wrap_exception(exc) from exc
+
+    def stream_with_cache(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        max_tokens: int = 4096,
+    ) -> str:
+        """Invoke Bedrock WITH prompt caching AND streaming.
+
+        Uses invoke_model_with_response_stream() instead of invoke_model().
+        Accumulates response chunks internally and returns complete text.
+
+        No read timeout risk — first byte arrives in ~2s,
+        chunks stream until completion.
+        """
+        self._check_rate_limit()
+
+        try:
+            body = json.dumps({
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": max_tokens,
+                "system": [
+                    {
+                        "type": "text",
+                        "text": system_prompt,
+                        "cache_control": {"type": "ephemeral"},
+                    },
+                ],
+                "messages": [
+                    {"role": "user", "content": user_prompt},
+                ],
+            })
+
+            t0 = time.monotonic()
+            response = self._client.invoke_model_with_response_stream(
+                modelId=self._model_id,
+                body=body,
+                contentType="application/json",
+                accept="application/json",
+            )
+
+            # Accumulate text from streaming chunks
+            accumulated_text = ""
+            output_tokens = 0
+
+            for event in response["body"]:
+                chunk_bytes = event.get("chunk", {}).get("bytes")
+                if not chunk_bytes:
+                    continue
+                chunk_data = json.loads(chunk_bytes)
+                chunk_type = chunk_data.get("type")
+
+                if chunk_type == "content_block_delta":
+                    delta = chunk_data.get("delta", {})
+                    if delta.get("type") == "text_delta":
+                        accumulated_text += delta.get("text", "")
+                elif chunk_type == "message_delta":
+                    usage = chunk_data.get("usage", {})
+                    output_tokens = usage.get("output_tokens", output_tokens)
+
+            elapsed = time.monotonic() - t0
+
+            # Log with synthetic response body for consistency
+            response_body: dict[str, Any] = {
+                "usage": {"output_tokens": output_tokens},
+            }
+            self._log_response(response_body, elapsed, cached=True)
+
+            return accumulated_text
 
         except (BedrockInvocationError, BedrockRateLimitError):
             raise

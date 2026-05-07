@@ -89,6 +89,28 @@ jobs:
           COMPONENTS=$(python3 -c "import json; d=json.load(open('output/container-sbom.cdx.json')); print(len(d.get('components',[])))" 2>/dev/null || echo "0")
           echo "Container SBOM: $COMPONENTS components" | tee -a build-output.txt
 
+      # ── SBOM Upload: Send to Dependency-Track ──
+      - name: Upload SBOM to Dependency-Track
+        if: always()
+        continue-on-error: true
+        env:
+          DTRACK_URL: ${{ secrets.DTRACK_URL }}
+          DTRACK_API_KEY: ${{ secrets.DTRACK_API_KEY }}
+        run: |
+          if [ -f output/container-sbom.cdx.json ] && [ -n "$DTRACK_URL" ]; then
+            # Create or update project in DT
+            curl -s -X PUT "${DTRACK_URL}/api/v1/bom" \
+              -H "X-Api-Key: ${DTRACK_API_KEY}" \
+              -H "Content-Type: multipart/form-data" \
+              -F "projectName=payment-api" \
+              -F "projectVersion=${{ github.sha }}" \
+              -F "autoCreate=true" \
+              -F "bom=@output/container-sbom.cdx.json"
+            echo "SBOM uploaded to Dependency-Track"
+          else
+            echo "Skipping SBOM upload (no file or no DT URL configured)"
+          fi
+
       # ── DAST: Start app and scan with ZAP ──
       - name: Start application
         run: |

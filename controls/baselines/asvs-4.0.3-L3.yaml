@@ -215,6 +215,11 @@ controls:
           rules:
             - "python.lang.security.injection.*"
             - "python.flask.security.injection.*"
+        - scanner: zap
+          rules:
+            - "ZAP-40018"
+            - "ZAP-40012"
+            - "ZAP-40014"
       applicable_tiers: [medium, high, critical]
       risk_tier_mapping:
         low: not-required

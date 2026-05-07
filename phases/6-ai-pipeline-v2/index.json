@@ -1,0 +1,56 @@
+{
+  "project": "ai-devsecops",
+  "phase": "6-ai-pipeline-v2",
+  "steps": [
+    {
+      "step": 0,
+      "name": "bedrock-streaming",
+      "status": "completed",
+      "started_at": "2026-05-04T12:06:07+0900",
+      "summary": "Added stream_with_cache() method with EventStream chunk accumulation, cache_control, rate limiting, and 5 unit tests",
+      "completed_at": "2026-05-04T12:07:59+0900"
+    },
+    {
+      "step": 1,
+      "name": "per-finding-prompts",
+      "status": "completed",
+      "started_at": "2026-05-04T12:08:00+0900",
+      "summary": "Added PER_FINDING_ASSESSMENT_PROMPT + SUMMARY_SYNTHESIS_PROMPT with cacheable system/user split, build_per_finding_prompts() and build_summary_prompts() builders, 6 tests",
+      "completed_at": "2026-05-04T12:10:52+0900"
+    },
+    {
+      "step": 2,
+      "name": "parallel-pipeline",
+      "status": "completed",
+      "started_at": "2026-05-04T12:10:52+0900",
+      "summary": "Replaced monolithic _ai_assess() with parallel per-finding ThreadPoolExecutor(max_workers=5) + summary synthesis using stream_with_cache(), per-finding static fallback, hybrid mode support, progress_callback, 7 tests",
+      "completed_at": "2026-05-04T12:20:14+0900"
+    },
+    {
+      "step": 3,
+      "name": "dashboard-exporter",
+      "status": "completed",
+      "started_at": "2026-05-04T12:20:14+0900",
+      "summary": "Added export_dashboard() pure function writing 5 dashboard JSON files (index, sp800-30, sar, poam, authorization) with lightweight index.json summary, 9 tests",
+      "completed_at": "2026-05-04T12:23:19+0900"
+    },
+    {
+      "step": 4,
+      "name": "cli-wiring",
+      "status": "completed",
+      "started_at": "2026-05-04T12:23:29+0900",
+      "summary": "Wired progress_callback (click.echo) + dashboard exporter + pipeline timing into risk_assess_cmd, updated step numbers to [N/8], 4 tests",
+      "completed_at": "2026-05-04T12:47:19+0900"
+    },
+    {
+      "step": 5,
+      "name": "ci-s3-upload",
+      "status": "completed",
+      "started_at": "2026-05-04T12:47:19+0900",
+      "summary": "Added S3 dashboard upload to security-gate.yml: AWS OIDC auth, timestamped runs (immutable cache) + latest (60s cache) + runs/index.json timeline, continue-on-error with graceful skip",
+      "completed_at": "2026-05-04T13:02:50+0900"
+    }
+  ],
+  "created_at": "2026-05-04T12:06:07+0900",
+  "completed_at": "2026-05-04T13:02:50+0900"
+}

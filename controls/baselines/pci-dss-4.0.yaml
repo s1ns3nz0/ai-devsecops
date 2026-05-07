@@ -379,6 +379,18 @@ controls:
             - "python.lang.security.audit.formatted-sql-query.*"
             - "python.django.security.injection.*"
             - "python.flask.security.injection.*"
+        - scanner: zap
+          rules:
+            - "ZAP-40012"    # Cross Site Scripting (Reflected)
+            - "ZAP-40014"    # Cross Site Scripting (Persistent)
+            - "ZAP-40018"    # SQL Injection
+            - "ZAP-40019"    # SQL Injection (MySQL)
+            - "ZAP-40020"    # SQL Injection (Hypersonic)
+            - "ZAP-40021"    # SQL Injection (Oracle)
+            - "ZAP-40022"    # SQL Injection (PostgreSQL)
+            - "ZAP-90021"    # XPath Injection
+            - "ZAP-40003"    # CRLF Injection
+            - "ZAP-40008"    # Parameter Tampering
       applicable_tiers: [high, critical]
       risk_tier_mapping:
         low: not-required

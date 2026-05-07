@@ -91,7 +91,7 @@ class SP80030Report:
     report_id: str  # RA-SP800-30-YYYY-MMDD-NNN
     product: str
     generated_at: str
-    mode: str  # "ai" | "static"
+    mode: str  # "ai" | "static" | "hybrid"
     methodology: str  # "NIST SP 800-30 Rev 1"
 
     # Phase 1: Prepare

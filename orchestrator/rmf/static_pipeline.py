@@ -67,6 +67,7 @@ class StaticRiskAssessmentPipeline:
         manifest: ProductManifest,
         controls: list[Control],
         trigger: str,
+        progress_callback: object = None,
     ) -> SP80030Report:
         """Template-based SP 800-30 assessment."""
         # Sort findings by severity

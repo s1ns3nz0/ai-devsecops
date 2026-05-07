@@ -423,8 +423,8 @@ def risk_assess(target_path: str, product: str, trigger: str, output: str, fmt: 
     output_dir.mkdir(parents=True, exist_ok=True)
     ext = "json" if fmt == "json" else "yaml"
 
-    # [1/7] Load configuration
-    click.echo("[1/7] Loading configuration")
+    # [1/8] Load configuration
+    click.echo("[1/8] Loading configuration")
     manifest = load_manifest(str(prod_dir / "product-manifest.yaml"))
     profile = load_profile(str(prod_dir / "risk-profile.yaml"))
 
@@ -446,8 +446,8 @@ def risk_assess(target_path: str, product: str, trigger: str, output: str, fmt: 
         f"A={cia.get('availability', 'moderate')}"
     )
 
-    # [2/7] Running scanners + EPSS
-    click.echo("\n[2/7] Running scanners + EPSS")
+    # [2/8] Running scanners + EPSS
+    click.echo("\n[2/8] Running scanners + EPSS")
     mapper = ControlMapper(repo)
     scanners = _build_scanners(mapper)
     runner = ScannerRunner(scanners)
@@ -472,16 +472,40 @@ def risk_assess(target_path: str, product: str, trigger: str, output: str, fmt: 
 
     click.echo(f"      Findings: {len(findings)} | EPSS enriched: {epss_enriched_count}/{len(cve_findings)}")
 
-    # [3/7] SP 800-30 Risk Assessment
-    click.echo("\n[3/7] SP 800-30 Risk Assessment (static mode)")
-    pipeline = StaticRiskAssessmentPipeline()
+    # [3/8] SP 800-30 Risk Assessment
+    import time as _time
+
+    model_id = os.environ.get("BEDROCK_MODEL_ID")
+    use_ai = False
+    if model_id:
+        try:
+            from orchestrator.assessor.bedrock_client import BedrockClient as _BC
+            from orchestrator.rmf.pipeline import RiskAssessmentPipeline
+
+            bc = _BC(model_id=model_id, region=os.environ.get("AWS_DEFAULT_REGION", "ap-northeast-1"))
+            pipeline = RiskAssessmentPipeline(bedrock_client=bc)
+            use_ai = True
+            click.echo("\n[3/8] SP 800-30 Risk Assessment (AI mode — Bedrock)")
+        except Exception:
+            pipeline = StaticRiskAssessmentPipeline()  # type: ignore[assignment]
+            click.echo("\n[3/8] SP 800-30 Risk Assessment (static mode — Bedrock failed)")
+    else:
+        pipeline = StaticRiskAssessmentPipeline()  # type: ignore[assignment]
+        click.echo("\n[3/8] SP 800-30 Risk Assessment (static mode)")
+
+    def _progress(completed: int, total: int, finding_id: str) -> None:
+        click.echo(f"      [{completed}/{total}] {finding_id} assessed")
+
+    t0 = _time.monotonic()
     sp800_report = pipeline.run(
         findings=findings,
         enriched_vulns=enriched_vulns,
         manifest=manifest,
         controls=controls,
         trigger=trigger,
+        progress_callback=_progress if use_ai else None,
     )
+    duration = _time.monotonic() - t0
 
     click.echo(f"      Threat sources: {len(sp800_report.threat_sources)} identified")
     click.echo(f"      Threat events: {len(sp800_report.threat_events)} identified")
@@ -512,8 +536,8 @@ def risk_assess(target_path: str, product: str, trigger: str, output: str, fmt: 
     }
     gate = combined.evaluate(findings, tier, context)
 
-    # [4/7] Security Assessment Report (SAR)
-    click.echo("\n[4/7] Security Assessment Report (SAR)")
+    # [4/8] Security Assessment Report (SAR)
+    click.echo("\n[4/8] Security Assessment Report (SAR)")
     sar_gen = SARGenerator(repo)
     sar = sar_gen.generate(
         product=product,
@@ -527,8 +551,8 @@ def risk_assess(target_path: str, product: str, trigger: str, output: str, fmt: 
     click.echo(f"      Not assessed: {sar.not_assessed}")
     click.echo(f"      Coverage: {sar.coverage_percentage}%")
 
-    # [5/7] Plan of Action & Milestones (POA&M)
-    click.echo("\n[5/7] Plan of Action & Milestones (POA&M)")
+    # [5/8] Plan of Action & Milestones (POA&M)
+    click.echo("\n[5/8] Plan of Action & Milestones (POA&M)")
     poam_gen = POAMGenerator()
     poam_items = poam_gen.generate(
         findings=findings,
@@ -545,8 +569,8 @@ def risk_assess(target_path: str, product: str, trigger: str, output: str, fmt: 
     for label, count in sorted(deadline_counts.items()):
         click.echo(f"        {label}: {count}")
 
-    # [6/7] Authorization Decision
-    click.echo("\n[6/7] Authorization Decision")
+    # [6/8] Authorization Decision
+    click.echo("\n[6/8] Authorization Decision")
     auth_engine = AuthorizationEngine()
     auth_decision = auth_engine.decide(
         gate_decision=gate,
@@ -555,8 +579,8 @@ def risk_assess(target_path: str, product: str, trigger: str, output: str, fmt: 
     click.echo(f"      Decision: {auth_decision.decision}")
     click.echo(f"      Reason: {auth_decision.reasoning}")
 
-    # [7/7] Export reports
-    click.echo("\n[7/7] Reports exported")
+    # [7/8] Export reports (YAML)
+    click.echo("\n[7/8] Reports exported (YAML)")
 
     def _serialize(obj: Any) -> dict[str, Any]:
         if hasattr(obj, "__dataclass_fields__"):
@@ -579,6 +603,29 @@ def risk_assess(target_path: str, product: str, trigger: str, output: str, fmt: 
         "items": [_serialize(item) for item in poam_items],
     })
     _write_report("authorization", _serialize(auth_decision))
+
+    # [8/8] Dashboard export (JSON)
+    click.echo("\n[8/8] Dashboard exported (JSON)")
+    pipeline_metadata = {
+        "scanners": list({f.source for f in findings}),
+        "ai_model": model_id or "static",
+        "duration_seconds": round(duration, 1),
+    }
+    try:
+        from orchestrator.exporters.dashboard import export_dashboard
+
+        written = export_dashboard(
+            report=sp800_report,
+            sar=sar,
+            poam_items=poam_items,
+            authorization=auth_decision,
+            output_dir=str(output_dir),
+            pipeline_metadata=pipeline_metadata,
+        )
+        for p in written:
+            click.echo(f"      {p}")
+    except Exception as exc:
+        click.echo(f"      WARNING: dashboard export failed: {exc}", err=True)
 
     click.echo("\n\u2713 RMF assessment complete.")
 
